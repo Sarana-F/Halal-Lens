@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="Check food, cosmetics and restaurants for halal status with Qur'an and hadith evidence.">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Halal Lens</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#1d3f94">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;600;700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one phone-width column; sticky brand bar with four tabs; verdict card framed by an eight-point star. */
+:root {
+  --paper: #f2f4f7; --card: #ffffff; --ink: #121a2b; --muted: #5a6378; --line: #dde2ea;
+  --lapis: #1d3f94; --lapis-soft: #e6ecfa; --gold: #a8842f;
+  --ok: #12703f; --ok-bg: #e2f3e9; --note: #2f6b4f; --note-bg: #edf6ef;
+  --bad: #b3261e; --bad-bg: #fde8e5; --warn: #94570a; --warn-bg: #fff0d4;
+  --diff: #6438a0; --diff-bg: #efe8fa; --unk: #5a6378; --unk-bg: #eceff4;
+  --display: "Reem Kufi", "Segoe UI", system-ui, sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #0e1320; --card: #161d2e; --ink: #e8ecf5; --muted: #9aa4ba; --line: #2a3349;
+  --lapis: #93acff; --lapis-soft: #1d2a4d; --gold: #d4b25f;
+  --ok: #6fd69c; --ok-bg: #12301f; --note: #9fd8b5; --note-bg: #16291f;
+  --bad: #ff8f86; --bad-bg: #3a1714; --warn: #f3bd62; --warn-bg: #352610;
+  --diff: #c4a5f5; --diff-bg: #2a1d42; --unk: #a7b0c4; --unk-bg: #222a3c; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --paper: #0e1320; --card: #161d2e; --ink: #e8ecf5; --muted: #9aa4ba; --line: #2a3349;
+  --lapis: #93acff; --lapis-soft: #1d2a4d; --gold: #d4b25f;
+  --ok: #6fd69c; --ok-bg: #12301f; --note: #9fd8b5; --note-bg: #16291f;
+  --bad: #ff8f86; --bad-bg: #3a1714; --warn: #f3bd62; --warn-bg: #352610;
+  --diff: #c4a5f5; --diff-bg: #2a1d42; --unk: #a7b0c4; --unk-bg: #222a3c; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font: 400 16px/1.55 var(--body); -webkit-text-size-adjust: 100%; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--card); }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; text-wrap: balance; margin: 0; }
+a { color: var(--lapis); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--lapis); outline-offset: 2px; }
+.wrap { max-width: 680px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Header + tabs */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--card); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; padding-block: 10px 6px; }
+.brand svg { flex: none; }
+.brand h1 { font-size: 1.35rem; letter-spacing: .01em; }
+.brand p { margin: 0; color: var(--muted); font-size: .8rem; }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding-block: 4px 8px; }
+.tab { border: 0; background: transparent; padding: 8px 4px; border-radius: 10px; font-weight: 600; font-size: .9rem; color: var(--muted); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--lapis-soft); color: var(--lapis); }
+
+main { padding-block: 16px 40px; display: grid; gap: 16px; }
+.panel { display: grid; gap: 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.card h2 { font-size: 1.15rem; }
+.lede { color: var(--muted); margin: 0; font-size: .95rem; }
+label.lbl { font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+textarea, input[type="text"], input[type="search"], select { width: 100%; border: 1px solid var(--line); background: var(--paper); border-radius: 10px; padding: 12px; }
+textarea { min-height: 96px; resize: vertical; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.row > * { flex: 1 1 140px; min-width: 0; }
+.field { display: grid; gap: 6px; }
+.seg { display: flex; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.seg button { flex: 1; border: 0; background: transparent; padding: 8px; border-radius: 8px; font-weight: 600; font-size: .9rem; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.btn { border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 700; background: var(--lapis); color: var(--card); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+.btn.ghost { background: var(--lapis-soft); color: var(--lapis); }
+.btn.small { padding: 8px 12px; font-size: .88rem; border-radius: 10px; }
+.btn:disabled { opacity: .55; cursor: progress; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 12px; font-size: .85rem; cursor: pointer; color: var(--ink); text-align: left; }
+.chip.static { cursor: default; }
+.chip[aria-pressed="true"] { background: var(--lapis-soft); color: var(--lapis); border-color: var(--lapis); }
+.row > .pill, .row > .btn.small { flex: 0 0 auto; }
+p.row { margin: 0; align-items: center; }
+p.row > span:last-child { flex: 1 1 200px; }
+.hint { font-size: .85rem; color: var(--muted); margin: 0; }
+
+/* Verdict */
+.verdict { display: grid; grid-template-columns: 72px 1fr; gap: 14px; align-items: center; border-radius: var(--r); padding: 16px; border: 1px solid transparent; }
+.verdict h2 { font-size: 1.6rem; }
+.verdict p { margin: 4px 0 0; }
+.v-x { background: var(--bad-bg); color: var(--bad); } .v-d { background: var(--warn-bg); color: var(--warn); }
+.v-m { background: var(--diff-bg); color: var(--diff); } .v-h, .v-hc { background: var(--ok-bg); color: var(--ok); }
+.v-n { background: var(--note-bg); color: var(--note); } .v-u { background: var(--unk-bg); color: var(--unk); }
+.verdict p, .verdict .meta { color: var(--ink); }
+@media (max-width: 480px) { .verdict { grid-template-columns: 48px 1fr; align-items: start; gap: 12px; } .verdict svg { width: 48px; height: 48px; } .verdict h2 { font-size: 1.35rem; } }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.tag { font-size: .75rem; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: var(--card); color: var(--muted); border: 1px solid var(--line); }
+.example-tag { background: var(--gold); color: var(--card); border-color: transparent; }
+
+.pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.p-x { background: var(--bad-bg); color: var(--bad); } .p-d { background: var(--warn-bg); color: var(--warn); }
+.p-m { background: var(--diff-bg); color: var(--diff); } .p-h, .p-hc { background: var(--ok-bg); color: var(--ok); }
+.p-n { background: var(--note-bg); color: var(--note); } .p-u { background: var(--unk-bg); color: var(--unk); }
+
+details.ing { border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+details.ing > summary { list-style: none; cursor: pointer; padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+details.ing > summary::-webkit-details-marker { display: none; }
+.ing-name { font-weight: 700; }
+.ing-found { grid-column: 1 / -1; font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; }
+.ing-body { padding: 0 14px 14px; display: grid; gap: 10px; font-size: .95rem; }
+.ing-body p { margin: 0; }
+.note { background: var(--lapis-soft); border-radius: 10px; padding: 8px 10px; font-size: .9rem; }
+.schools { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; }
+.school { display: flex; justify-content: space-between; gap: 6px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: .88rem; }
+.school.mine { border-color: var(--lapis); box-shadow: inset 0 0 0 1px var(--lapis); }
+.evs { display: grid; gap: 8px; }
+.ev { border-left: 3px solid var(--gold); padding: 2px 0 2px 10px; }
+.ev .src { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.ev .src a { text-decoration: none; }
+.ev q { display: block; quotes: none; font-size: .93rem; }
+.benefit { border-left: 3px solid var(--ok); padding-left: 10px; }
+.benefit b { display: block; }
+.list-gap { display: grid; gap: 8px; }
+.ai { border: 1px dashed var(--lapis); }
+.ai .status { font-size: .9rem; color: var(--muted); }
+.prod { display: grid; grid-template-columns: 48px 1fr auto; gap: 10px; align-items: center; text-align: left; border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 8px; cursor: pointer; width: 100%; }
+.prod img, .prod .ph { width: 48px; height: 48px; object-fit: contain; border-radius: 8px; background: var(--paper); }
+.prod span { min-width: 0; overflow-wrap: anywhere; }
+.preview { max-height: 260px; width: auto; max-width: 100%; border-radius: 12px; border: 1px solid var(--line); justify-self: start; }
+.links { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.checklist { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; font-size: .95rem; }
+.kv dt { color: var(--muted); font-weight: 600; } .kv dd { margin: 0; overflow-wrap: anywhere; }
+.principle h3 { font-size: 1.02rem; }
+.principle p { margin: 0; }
+.foot { color: var(--muted); font-size: .82rem; text-align: center; padding-bottom: 24px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (prefers-reduced-motion: no-preference) { .fade { animation: fade .25s ease-out; } @keyframes fade { from { opacity: .4; transform: translateY(4px); } } }
+</style>
+
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true"><g fill="none" stroke="var(--lapis)" stroke-width="2.4"><rect x="8" y="8" width="24" height="24" rx="2"/><rect x="8" y="8" width="24" height="24" rx="2" transform="rotate(45 20 20)"/></g><circle cx="20" cy="20" r="5" fill="var(--gold)"/></svg>
+      <div><h1>Halal Lens</h1><p>Food, cosmetics &amp; restaurants, checked against Qur'an, Sunnah and the four schools</p></div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" id="t-check" aria-controls="check" aria-selected="true">Check</button>
+      <button class="tab" role="tab" id="t-scan" aria-controls="scan" aria-selected="false">Scan</button>
+      <button class="tab" role="tab" id="t-eat" aria-controls="eat" aria-selected="false">Restaurants</button>
+      <button class="tab" role="tab" id="t-learn" aria-controls="learn" aria-selected="false">Learn</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- CHECK -->
+  <section class="panel" id="check" role="tabpanel" aria-labelledby="t-check">
+    <form class="card" id="checkForm" autocomplete="off">
+      <div class="field">
+        <label class="lbl" for="q">Product name or ingredient list</label>
+        <textarea id="q" placeholder="e.g. KitKat, Nivea cream, E471, or paste: sugar, gelatine, colour (E120)…"></textarea>
+      </div>
+      <div class="row">
+        <div class="field"><span class="lbl">Type</span>
+          <div class="seg" role="group" aria-label="Type"><button type="button" data-ctx="food" aria-pressed="true">Food &amp; drink</button><button type="button" data-ctx="cosmetic" aria-pressed="false">Cosmetics</button></div>
+        </div>
+        <div class="field"><label class="lbl" for="school">School of law</label>
+          <select id="school"><option value="">All schools (show differences)</option><option value="hn">Hanafi</option><option value="sh">Shafi'i</option><option value="mk">Maliki</option><option value="hb">Hanbali</option></select>
+        </div>
+      </div>
+      <button class="btn" id="checkBtn" type="submit">Check halal status</button>
+      <div class="chips" id="examples" aria-label="Examples"></div>
+      <div class="chips" id="recent" aria-label="Recent searches"></div>
+    </form>
+    <div id="checkOut" class="panel" aria-live="polite"></div>
+  </section>
+
+  <!-- SCAN -->
+  <section class="panel" id="scan" role="tabpanel" aria-labelledby="t-scan" hidden>
+    <div class="card">
+      <h2>Photograph the ingredients</h2>
+      <p class="lede">Take a clear, flat photo of the ingredient list. Include any halal logo or the green/brown veg mark if the pack has one.</p>
+      <div class="row">
+        <label class="btn" for="cam">Take photo</label>
+        <label class="btn ghost" for="pick">Choose image</label>
+      </div>
+      <input class="sr" type="file" id="cam" accept="image/*" capture="environment">
+      <input class="sr" type="file" id="pick" accept="image/*">
+      <p class="hint" id="scanEngine"></p>
+      <img id="preview" class="preview" alt="Your photo" hidden>
+      <p class="hint" id="scanStatus" aria-live="polite"></p>
+      <div class="field" id="scanTextWrap" hidden>
+        <label class="lbl" for="scanText">Ingredients read from the photo (you can correct them)</label>
+        <textarea id="scanText"></textarea>
+        <button class="btn ghost small" id="recheck" type="button">Check again</button>
+      </div>
+    </div>
+    <div id="scanOut" class="panel" aria-live="polite"></div>
+  </section>
+
+  <!-- RESTAURANTS -->
+  <section class="panel" id="eat" role="tabpanel" aria-labelledby="t-eat" hidden>
+    <form class="card" id="eatForm" autocomplete="off">
+      <h2>Is this restaurant halal?</h2>
+      <div class="row">
+        <div class="field"><label class="lbl" for="rName">Restaurant</label><input type="text" id="rName" placeholder="e.g. Nando's, Burger King"></div>
+        <div class="field"><label class="lbl" for="rCity">City or area</label><input type="text" id="rCity" placeholder="e.g. Chennai, London"></div>
+      </div>
+      <button class="btn" type="submit" id="eatBtn">Check restaurant</button>
+      <p class="hint">Halal status changes by branch and country. A certificate on the wall or the certifier's online register is the final word.</p>
+    </form>
+    <div id="eatOut" class="panel" aria-live="polite"></div>
+  </section>
+
+  <!-- LEARN -->
+  <section class="panel" id="learn" role="tabpanel" aria-labelledby="t-learn" hidden>
+    <div class="card" id="principles"></div>
+    <div class="card">
+      <h2>Ingredient library</h2>
+      <input type="search" id="libQ" placeholder="Search: gelatin, E471, carmine, shrimp, alcohol…" aria-label="Search the ingredient library">
+      <div class="chips" id="libFilter"></div>
+      <div class="list-gap" id="libList"></div>
+    </div>
+  </section>
+
+  <p class="foot">Halal Lens explains the evidence and the scholars' positions so you can decide with knowledge. It is not a fatwa. For a personal ruling, ask a qualified scholar; for certainty about a product, rely on a trusted halal certificate.</p>
+</main>
+
+<script src="evidence.js"></script>
+<script src="ing-core.js"></script>
+<script src="ing-additives.js"></script>
+<script src="ing-plant-cosmetic.js"></script>
+<script src="engine.js"></script>
+<script src="render.js"></script>
+<script src="services.js"></script>
+<script src="app.js"></script>
+<script src="eat.js"></script>
+</body>
+</html>
