@@ -129,6 +129,7 @@ details.ing > summary::-webkit-details-marker { display: none; }
 .prod { display: grid; grid-template-columns: 48px 1fr auto; gap: 10px; align-items: center; text-align: left; border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 8px; cursor: pointer; width: 100%; }
 .prod img, .prod .ph { width: 48px; height: 48px; object-fit: contain; border-radius: 8px; background: var(--paper); }
 .prod span { min-width: 0; overflow-wrap: anywhere; }
+.prod[aria-pressed="true"] { border-color: var(--lapis); box-shadow: inset 0 0 0 1px var(--lapis); }
 .preview { max-height: 260px; width: auto; max-width: 100%; border-radius: 12px; border: 1px solid var(--line); justify-self: start; }
 .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
 .checklist { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
@@ -193,6 +194,12 @@ details.ing > summary::-webkit-details-marker { display: none; }
       <input class="sr" type="file" id="cam" accept="image/*" capture="environment">
       <input class="sr" type="file" id="pick" accept="image/*">
       <p class="hint" id="scanEngine"></p>
+      <div class="field" id="ocrLangWrap" hidden>
+        <label class="lbl" for="ocrLang">Label language</label>
+        <select id="ocrLang">
+          <option value="eng">English</option><option value="ara">Arabic</option><option value="urd">Urdu</option><option value="hin">Hindi</option><option value="tam">Tamil</option><option value="ben">Bengali</option><option value="msa">Malay</option><option value="ind">Indonesian</option><option value="tur">Turkish</option><option value="fas">Persian</option><option value="fra">French</option><option value="spa">Spanish</option><option value="deu">German</option><option value="ita">Italian</option><option value="nld">Dutch</option><option value="por">Portuguese</option><option value="rus">Russian</option><option value="chi_sim">Chinese (simplified)</option><option value="jpn">Japanese</option><option value="kor">Korean</option><option value="tha">Thai</option>
+        </select>
+      </div>
       <img id="preview" class="preview" alt="Your photo" hidden>
       <p class="hint" id="scanStatus" aria-live="polite"></p>
       <div class="field" id="scanTextWrap" hidden>
@@ -238,6 +245,7 @@ details.ing > summary::-webkit-details-marker { display: none; }
 <script src="ing-plant-cosmetic.js"></script>
 <script src="engine.js"></script>
 <script src="render.js"></script>
+<script src="prompts.js"></script>
 <script src="services.js"></script>
 <script src="app.js"></script>
 <script src="eat.js"></script>

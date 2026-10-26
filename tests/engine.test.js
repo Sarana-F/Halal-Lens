@@ -30,7 +30,11 @@ const CASES = [
   ['beef salami', 'food', '', 'd'],
   ['ginger ale', 'food', '', 'h'],
   ['Lion bar', 'food', '', 'u'],
-  ['soy lecithin, mirin', 'food', '', 'x']
+  ['soy lecithin, mirin', 'food', '', 'x'],
+  // What the photo scanner passes on when it recognises a product but sees no ingredient list
+  ['liqueur-filled chocolate bottles', 'food', '', 'x'],
+  ['milk chocolate (sugar, cocoa butter, milk powder), bourbon whiskey 15%, sugar syrup', 'food', '', 'x'],
+  ['sugar, glucose syrup, gelatine, citric acid; halal certified (JAKIM)', 'food', '', 'hc']
 ];
 
 let fail = 0;

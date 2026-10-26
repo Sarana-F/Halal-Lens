@@ -1,4 +1,7 @@
-/* Halal Lens — outside services: Claude (inside an artifact), Open Food Facts, on-device OCR, barcodes. */
+/* Halal Lens — outside services.
+   Claude is reached two ways: inside a claude.ai artifact (the viewer's own Claude account), or through
+   this site's /api/ask function when it is hosted on Vercel with an Anthropic API key. Without either,
+   the app falls back to Open Food Facts and on-device OCR. */
 window.HL = window.HL || {};
 (function () {
   var el = HL.el;
@@ -12,6 +15,64 @@ window.HL = window.HL || {};
   HL.mcpReady = HL.inArtifact ? window.claude.use('mcp').then(function (m) { HL.CAP.mcp = m || false; return m || null; }, function () { return null; })
     : Promise.resolve(null);
 
+  function timeout(ms) { try { return AbortSignal.timeout(ms); } catch (e) { return undefined; } }
+  // Does this site have the Claude API function (Vercel + ANTHROPIC_API_KEY)?
+  HL.serverReady = HL.inArtifact || location.protocol === 'file:' ? Promise.resolve(false)
+    : fetch('api/ask', { signal: timeout(6000) }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { return !!(j && j.ai); }, function () { return false; });
+  HL.aiReady = Promise.all([HL.sampleReady, HL.serverReady]).then(function (v) {
+    HL.CAP.mode = v[0] ? 'claude' : v[1] ? 'server' : null;
+    if (v[1]) HL.CAP.images = true;
+    return HL.CAP.mode;
+  });
+
+  function blobToBase64(blob) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(String(r.result).split(',')[1]); };
+      r.onerror = function () { rej(new Error('The photo could not be read.')); };
+      r.readAsDataURL(blob);
+    });
+  }
+  // Downscale to at most 1600 px on the long side so uploads stay small and fast.
+  HL.shrink = function (file) {
+    if (!window.createImageBitmap) return Promise.resolve(file);
+    return createImageBitmap(file, { imageOrientation: 'from-image' }).then(function (bmp) {
+      var k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      var c = document.createElement('canvas');
+      c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+      c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+      return new Promise(function (res) { c.toBlob(function (b) { res(b || file); }, 'image/jpeg', 0.85); });
+    }, function () { return file; });
+  };
+
+  /* Ask Claude. task: 'scan' | 'product' | 'restaurant'. Resolves with the parsed JSON answer. */
+  HL.ai = function (task, args, image) {
+    return HL.aiReady.then(function (mode) {
+      if (mode === 'claude') {
+        return HL.sampleReady.then(function (s) {
+          var opt = { modelTier: 'default' };
+          if (image) opt.images = [image];
+          return s.json(HL.PROMPTS[task](args), opt);
+        });
+      }
+      if (mode === 'server') {
+        return (image ? blobToBase64(image) : Promise.resolve(null)).then(function (b64) {
+          return fetch('api/ask', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ task: task, args: args, image: b64 ? { media_type: image.type || 'image/jpeg', data: b64 } : undefined })
+          });
+        }).then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (j) {
+            if (!r.ok) throw { code: j.code || 'upstream_error', message: j.error || ('HTTP ' + r.status) };
+            return j.result;
+          });
+        }, function () { throw { code: 'upstream_error', message: 'network' }; });
+      }
+      throw { code: 'no_ai', message: 'No AI available' };
+    });
+  };
+
   HL.aiError = function (e) {
     return ({
       not_granted: 'Claude access was not allowed for this page. You can still type or paste ingredients.',
@@ -22,9 +83,11 @@ window.HL = window.HL || {};
       invalid_json: 'The answer came back in an unexpected shape. Try again.',
       image_rejected: 'That image could not be used. Try a JPG or PNG photo.',
       images_unavailable: 'Photos cannot be sent to Claude in this view.',
+      too_large: 'The photo is too large. Try again; the app shrinks it automatically.',
+      server_off: 'AI reading is not switched on for this website yet.',
       empty_completion: 'Claude returned nothing. Try again.',
       cancelled: 'Stopped.'
-    })[e && e.code] || 'Claude could not be reached. Check your connection and try again.';
+    })[e && e.code] || 'The AI service could not be reached. Check your connection and try again.';
   };
 
   // ---------- Open Food Facts / Open Beauty Facts (blocked inside artifacts, works when hosted) ----------
@@ -32,9 +95,7 @@ window.HL = window.HL || {};
   function base(ctx) { return ctx === 'cosmetic' ? 'https://world.openbeautyfacts.org' : 'https://world.openfoodfacts.org'; }
   function getJSON(url) {
     if (HL.inArtifact) return Promise.reject(new Error('offline'));
-    var opt = {};
-    try { opt.signal = AbortSignal.timeout(10000); } catch (e) {}
-    return fetch(url, opt).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+    return fetch(url, { signal: timeout(10000) }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
   }
   HL.offSearch = function (q, ctx) {
     return getJSON(base(ctx) + '/cgi/search.pl?search_terms=' + encodeURIComponent(q) + '&search_simple=1&action=process&json=1&page_size=10&fields=' + FIELDS)
@@ -54,8 +115,8 @@ window.HL = window.HL || {};
 
   // ---------- Claude product lookup ----------
   HL.aiProductCard = function (q, box, auto) {
-    HL.sampleReady.then(function (s) {
-      if (!s) return;
+    HL.aiReady.then(function (mode) {
+      if (!mode) return;
       var card = el('div', { class: 'card ai' });
       box.appendChild(card);
       function idle() {
@@ -67,20 +128,13 @@ window.HL = window.HL || {};
       function go() {
         card.textContent = '';
         card.appendChild(el('h2', { text: 'Claude’s product lookup' }));
-        var st = el('p', { class: 'status', text: 'Thinking… (the first time, Claude asks your permission)' });
+        var st = el('p', { class: 'status', text: mode === 'claude' ? 'Thinking… (the first time, Claude asks your permission)' : 'Thinking…' });
         card.appendChild(st);
-        var prompt = 'You help Muslims check whether products are halal.\nProduct the user typed: "' + q + '"\nCategory: ' + (HL.S.ctx === 'cosmetic' ? 'cosmetics / personal care' : 'food and drink') +
-          '\n\nReply with only JSON in this shape:\n{"product": string, "brand": string|null, "known": boolean, "ingredients": string, "variesByCountry": string, "halalCertification": string, "concerns": [string], "confidence": "high"|"medium"|"low"}\n\nRules:\n' +
-          '- "ingredients": the typical ingredient list as printed on the pack, comma-separated, with E-numbers. Use "" if you do not know this product.\n' +
-          '- "variesByCountry": how the recipe or halal status differs between countries (for example halal-certified production in Malaysia or the Gulf versus Europe). "" if unknown.\n' +
-          '- "halalCertification": only certification you are confident exists, naming country and certifier. Otherwise "".\n' +
-          '- "concerns": short notes on gelatin source, alcohol, carmine, E471 origin, animal rennet or shared production lines that apply.\n' +
-          '- If you do not recognise the product, set known=false. Never guess or invent ingredients or certificates.';
-        s.json(prompt, { modelTier: 'default' }).then(function (j) {
+        HL.ai('product', { q: q, ctx: HL.S.ctx }).then(function (j) {
           card.textContent = '';
           if (!j || !j.known || !j.ingredients) {
             card.appendChild(el('h2', { text: 'Claude doesn’t know this product' }));
-            card.appendChild(el('p', { class: 'hint', text: 'Photograph the ingredient list instead; that is the most reliable check.' }));
+            card.appendChild(el('p', { class: 'hint', text: 'Photograph the pack or its ingredient list instead.' }));
             card.appendChild(el('button', { type: 'button', class: 'btn ghost', text: 'Open the scanner', onclick: function () { HL.show('scan'); } }));
             return;
           }
@@ -110,26 +164,6 @@ window.HL = window.HL || {};
       return new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] }).detect(bmp);
     }).then(function (c) { return c && c[0] ? c[0].rawValue : null; }, function () { return null; });
   }
-  function claudeRead(s, file, onStatus) {
-    onStatus('Claude is reading the label… (the first time, Claude asks your permission)');
-    var prompt = 'This photo shows a product package or label. Read it and reply with only JSON:\n' +
-      '{"readable": boolean, "product": string|null, "ingredients": string, "halalMark": string|null, "vegMark": "green"|"brown"|null, "claims": [string]}\n\n' +
-      '- "ingredients": the full ingredient list exactly as printed, translated into English if it is in another language. Keep E-numbers, INS numbers and anything in brackets. "" if no ingredient list is visible.\n' +
-      '- "halalMark": the text or certifier name of a halal logo you can actually see, otherwise null.\n' +
-      '- "vegMark": the Indian green (vegetarian) or brown (non-vegetarian) dot symbol, if visible.\n' +
-      '- "claims": label claims such as "vegan", "suitable for vegetarians", "alcohol free", "no pork".\n' +
-      '- Set readable=false if the text is too blurry to read. Do not guess ingredients you cannot see.';
-    return s.json(prompt, { images: [file] }).then(function (j) {
-      if (!j || !j.readable || !j.ingredients) throw new Error('No ingredient list could be read. Try a sharper, closer photo of the ingredients.');
-      var extra = [];
-      if (j.halalMark) extra.push('halal certified (' + j.halalMark + ')');
-      if (j.vegMark === 'green') extra.push('suitable for vegetarians');
-      (Array.isArray(j.claims) ? j.claims : []).forEach(function (c) { extra.push(String(c)); });
-      var note = (j.product ? j.product + '. ' : '') + (j.halalMark ? 'Halal mark seen: ' + j.halalMark + '. ' : '') +
-        (j.vegMark === 'brown' ? 'Brown (non-vegetarian) mark seen. ' : '') + 'Read by Claude; compare the text below with your pack.';
-      return { text: String(j.ingredients), extra: extra.join('; '), note: note };
-    }, function (e) { throw new Error(e && e.code ? HL.aiError(e) : (e && e.message) || HL.aiError(e)); });
-  }
   function loadScript(src) {
     return new Promise(function (res, rej) {
       var sc = document.createElement('script');
@@ -138,26 +172,47 @@ window.HL = window.HL || {};
       document.head.appendChild(sc);
     });
   }
-  function ocrRead(file, onStatus) {
-    onStatus('Loading the on-device text reader (the first time takes a moment)…');
+  function ocrRead(file, onStatus, lang) {
+    var langs = lang && lang !== 'eng' ? 'eng+' + lang : 'eng';
+    onStatus('Loading the on-device text reader (the first time for each language takes a moment)…');
     return (window.Tesseract ? Promise.resolve() : loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js')).then(function () {
-      return window.Tesseract.recognize(file, 'eng', { logger: function (m) { if (m.status === 'recognizing text') onStatus('Reading text… ' + Math.round(m.progress * 100) + '%'); } });
+      return window.Tesseract.recognize(file, langs, { logger: function (m) { if (m.status === 'recognizing text') onStatus('Reading text… ' + Math.round(m.progress * 100) + '%'); } });
     }).then(function (r) {
       var text = ((r && r.data && r.data.text) || '').replace(/\s*\n\s*/g, ' ').trim();
       var m = text.match(/ingredients?\s*[:\-]?\s*(.*)/i);
       if (m) text = m[1];
       if (!text) throw new Error('No text found. Try a sharper photo with the ingredients filling the frame.');
-      return { text: text, note: 'Read on your device. OCR makes mistakes, so correct the text below if needed.' };
+      return { mode: 'ocr', text: text, note: 'Read on your device. OCR makes mistakes and cannot translate, so correct the text below if needed.' };
     }, function (e) { throw new Error((e && e.message) || 'The photo could not be read. Type the ingredients in the Check tab instead.'); });
   }
-  HL.readLabel = function (file, onStatus) {
+  function visionRead(file, onStatus) {
+    onStatus(HL.CAP.mode === 'claude' ? 'Looking at your photo… (the first time, Claude asks your permission)' : 'Looking at your photo…');
+    return HL.shrink(file).then(function (img) { return HL.ai('scan', { ctx: HL.S.ctx }, img); }).then(function (j) {
+      var products = (j && Array.isArray(j.products) ? j.products : []).filter(function (p) { return p && (p.labelIngredients || p.typicalIngredients || p.name); });
+      if (!j || j.readable === false || !products.length) throw new Error((j && j.summary ? j.summary + ' ' : '') + 'Nothing to check could be recognised. Try a closer photo of the pack or its ingredient list.');
+      j.products = products;
+      return { mode: 'vision', data: j };
+    }, function (e) { throw new Error(e && e.code ? HL.aiError(e) : (e && e.message) || HL.aiError(e)); });
+  }
+  /* Returns {mode:'vision', data} | {mode:'ocr', text, note} | {product, note}. */
+  HL.readLabel = function (file, onStatus, lang) {
     return tryBarcode(file).then(function (code) {
       if (!code) return null;
       onStatus('Barcode ' + code + ' found. Looking it up…');
       return HL.offBarcode(code, HL.S.ctx).then(function (p) { return p ? { product: p, note: 'Barcode ' + code + ' found in Open Food Facts.' } : null; }, function () { return null; });
     }).then(function (res) {
       if (res) return res;
-      return HL.sampleReady.then(function (s) { return s && HL.CAP.images ? claudeRead(s, file, onStatus) : ocrRead(file, onStatus); });
+      return HL.aiReady.then(function (mode) { return mode && HL.CAP.images ? visionRead(file, onStatus) : ocrRead(file, onStatus, lang); });
     });
+  };
+
+  /* Turn one recognised product into text for the engine. */
+  HL.productText = function (p) {
+    var extra = [];
+    if (p.halalMark) extra.push('halal certified (' + p.halalMark + ')');
+    if (p.vegMark === 'green') extra.push('suitable for vegetarians');
+    (Array.isArray(p.claims) ? p.claims : []).forEach(function (c) { extra.push(String(c)); });
+    var ing = String(p.labelIngredients || p.typicalIngredients || p.type || p.name || '');
+    return { ingredients: ing, extra: extra.join('; '), fromLabel: !!p.labelIngredients };
   };
 })();

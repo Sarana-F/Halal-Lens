@@ -1,7 +1,7 @@
 /* Halal Lens service worker: the app shell works offline; product searches always go to the network. */
-var CACHE = 'halal-lens-v1';
+var CACHE = 'halal-lens-v2';
 var SHELL = ['./', './index.html', './evidence.js', './ing-core.js', './ing-additives.js', './ing-plant-cosmetic.js',
-  './engine.js', './render.js', './services.js', './app.js', './eat.js', './icon.svg', './manifest.webmanifest'];
+  './engine.js', './render.js', './prompts.js', './services.js', './app.js', './eat.js', './icon.svg', './manifest.webmanifest'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));
@@ -13,7 +13,7 @@ self.addEventListener('activate', function (e) {
 });
 self.addEventListener('fetch', function (e) {
   var url = new URL(e.request.url);
-  if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.indexOf('/api/') === 0) return;
   // Network first so updates arrive; fall back to the cached shell offline.
   e.respondWith(fetch(e.request).then(function (res) {
     var copy = res.clone();

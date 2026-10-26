@@ -67,7 +67,7 @@
       el('label', { class: 'lbl', for: 'rMsg', text: 'Message you can send' }), area,
       el('div', { class: 'row' }, [copyBtn, el('a', { class: 'btn ghost small', href: 'https://wa.me/?text=' + enc(msg), target: '_blank', rel: 'noopener', text: 'Open in WhatsApp' })])
     ]));
-    HL.sampleReady.then(function (s) { if (s) aiCard(s, name, city, aiBox); });
+    HL.aiReady.then(function (mode) { if (mode) aiCard(name, city, aiBox); });
     HL.mcpReady.then(function (m) {
       if (!m) return;
       // The app's browser is listed only when this page is open in the Claude desktop app.
@@ -78,17 +78,10 @@
   }
   $('eatForm').addEventListener('submit', function (e) { e.preventDefault(); run(); });
 
-  function aiCard(s, name, city, box) {
-    var c = el('div', { class: 'card ai' }, [el('h2', { text: 'What Claude knows' }), el('p', { class: 'status', text: 'Thinking… (the first time, Claude asks your permission)' })]);
+  function aiCard(name, city, box) {
+    var c = el('div', { class: 'card ai' }, [el('h2', { text: 'What Claude knows' }), el('p', { class: 'status', text: HL.CAP.mode === 'claude' ? 'Thinking… (the first time, Claude asks your permission)' : 'Thinking…' })]);
     box.appendChild(c);
-    var prompt = 'A Muslim wants to know whether a restaurant serves halal food.\nRestaurant: "' + name + '"\nLocation: "' + (city || 'not given') + '"\n\n' +
-      'You cannot browse. Using only what you reliably know, reply with only JSON:\n' +
-      '{"known": boolean, "isChain": boolean, "status": "certified"|"claims_halal"|"partly"|"not_halal"|"unknown", "summary": string, "porkOrAlcohol": "yes"|"no"|"unknown", "officialWebsite": string|null, "howToVerify": string}\n\n' +
-      '- "summary": 2-3 plain sentences on its halal status, saying how it differs by country or branch.\n' +
-      '- "officialWebsite": only a domain you are certain is the official site, otherwise null.\n' +
-      '- "howToVerify": one sentence naming the certifier or register to check, if known.\n' +
-      '- Never invent phone numbers, addresses, emails or certificates. If you do not know this specific restaurant, set known=false and status "unknown".';
-    s.json(prompt, { modelTier: 'default' }).then(function (j) {
+    HL.ai('restaurant', { name: name, city: city }).then(function (j) {
       c.textContent = '';
       var st = STATUS[j && j.status] || STATUS.unknown;
       c.appendChild(el('div', { class: 'row' }, [el('h2', { text: 'What Claude knows' }), el('span', { style: 'flex:0 0 auto' }, [el('span', { class: 'pill p-' + st[0], text: st[1] })])]));

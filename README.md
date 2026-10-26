@@ -16,7 +16,7 @@ Plain HTML, CSS and JavaScript. No build step, no server, no login. Works offlin
 Type the name (`Haribo Goldbears`) or the digits under the barcode (`3017624010701`). The app searches Open Food Facts; pick the product that matches your country's pack.
 
 **By photo**
-Open **Scan**, tap **Take photo**, and photograph the ingredient list flat and well lit. Correct any misread words, then tap **Check again**.
+Open **Scan** and tap **Take photo**. With AI switched on, photograph anything: the front of a pack, the ingredient list, several products at once, a dish or a menu, in any language. The app shows what it recognised, a verdict for each product, and whether the ingredients were read from the label or are the product's usual recipe. Without AI, photograph the ingredient list flat and well lit, pick the label's language, and correct any misread words before tapping **Check again**.
 
 **Restaurants**
 Open **Restaurants**, enter the name and city. You get first impressions from the name, links to Google Maps (phone number, hours, reviews) and halal searches, and a ready message to send them on WhatsApp.
@@ -38,6 +38,13 @@ The site is static: any host that serves files works.
 
 **Vercel**: import this GitHub repository at https://vercel.com/new, keep Framework Preset "Other", leave the build command empty, and deploy. Every push to `main` redeploys.
 
+**Turn on Lens-style scanning (Vercel only).** Without this, photos are read on the phone (OCR), which needs a clear ingredient list and cannot translate. With it, Claude recognises packs, dishes and menus in any language, like Google Lens, and also looks up unknown product names and restaurants.
+1. Create an API key at https://console.anthropic.com → Settings → API keys. Set a monthly spend limit there.
+2. In Vercel: your project → Settings → Environment Variables → add `ANTHROPIC_API_KEY` with the key.
+3. Deployments → the latest one → ⋯ → Redeploy.
+
+The key stays on the server (`api/ask.js`); the browser never sees it. The function only accepts this site's three fixed tasks, refuses other websites, and limits each visitor to 30 requests per 10 minutes. It uses Claude Opus 5.5, roughly 3 to 5 US cents per photo. Optional settings: `HL_MODEL`, `HL_EFFORT` (`low`, `medium`, `high`), `HL_RATE_LIMIT`.
+
 **GitHub Pages**: repository Settings → Pages → Deploy from branch `main`, folder `/ (root)`.
 
 **Install on a phone**: open the site, then Android (Chrome) menu → *Add to Home screen*, or iPhone (Safari) Share → *Add to Home Screen*.
@@ -54,8 +61,10 @@ There is also a claude.ai version for signed-in Claude users, where Claude reads
 | `ing-core.js`, `ing-additives.js`, `ing-plant-cosmetic.js` | The ingredient rules (about 110 groups, 1,800 names and E/INS numbers) |
 | `engine.js` | Reads an ingredient list and works out the verdict |
 | `render.js`, `app.js`, `services.js`, `eat.js` | Screens, photo reading, product lookup, restaurant check |
+| `prompts.js` | The instructions sent to Claude (shared by the browser and the server) |
+| `api/ask.js` | Vercel function that calls Claude with the server's API key |
 | `manifest.webmanifest`, `sw.js`, `icon.svg` | Make the site installable and usable offline |
-| `tests/engine.test.js` | Engine tests: `node tests/engine.test.js` |
+| `tests/` | Engine and API tests: `npm test` |
 | `DEVELOPMENT.md` | How the app was designed, built and tested |
 
 ## Adding an ingredient

@@ -34,7 +34,9 @@ ing-additives.js  E-numbers / INS numbers, emulsifiers, colours, sweeteners
 ing-plant-cosmetic.js  plant foods with Sunnah benefits, staples, fermented foods, cosmetics
 engine.js         HL.analyze(text, {ctx, school}) -> verdict, hits, unknown items, claims
 render.js         builds the verdict card, ingredient cards, evidence, Learn tab
-services.js       Claude (inside claude.ai), Open Food Facts, on-device OCR, barcodes
+prompts.js        the instructions sent to Claude, shared by the browser and api/ask.js
+services.js       Claude (claude.ai or api/ask.js), Open Food Facts, on-device OCR, barcodes
+api/ask.js        Vercel function: calls Claude Opus 5.5 with the server's ANTHROPIC_API_KEY
 app.js            tabs, settings, Check and Scan flows, library
 eat.js            restaurant check
 sw.js + manifest.webmanifest + icon.svg   installable, offline-capable PWA
@@ -98,8 +100,13 @@ Coverage today: about 110 groups and 1,800 names, including E and INS numbers an
 
 ## 7. Photo reading
 
-- **Inside claude.ai**: the photo goes to Claude with instructions to copy the ingredient list exactly, translate it to English if needed, keep E-numbers, and report any halal logo or Indian green/brown dot it can actually see. It is told not to guess unreadable text.
-- **Hosted**: Tesseract.js 5.1.1 runs on the phone (the language file downloads once). The text is shown so the user can correct OCR mistakes before checking. If the browser supports `BarcodeDetector` and a barcode is in the photo, the barcode lookup is tried first.
+**Version 1.0** only looked for a printed ingredient list. First user test: a photo of foil-wrapped liqueur chocolate bottles (no ingredient list visible) returned "No ingredient list could be read", with no details. The scanner was redesigned to behave like Google Lens:
+
+- Claude is asked to **recognise** what the photo shows: an ingredient list, the front of a pack, several products, a dish or a menu, in any language or script, translated into English (`prompts.js`, task `scan`).
+- For **each product** it returns the printed ingredients if visible; otherwise the product's **usual recipe** from its knowledge (naming any alcohol, pork, gelatin or carmine), plus halal logos, the Indian veg mark, label claims and notes.
+- The app shows "What the camera sees", a list of products each with its own verdict, and opens the most serious one. When the ingredients came from Claude's knowledge rather than the label, a note says so and suggests photographing the ingredient list.
+- Claude is reached through the viewer's own account inside claude.ai, or through `api/ask.js` on Vercel when an `ANTHROPIC_API_KEY` is set. The server builds the prompt itself, accepts only the three fixed tasks, refuses other websites, rate-limits each visitor, rejects photos over 4 MB (the browser downsizes them to 1600 px first), and uses server-side refusal fallbacks.
+- **Without AI**, Tesseract.js 5.1.1 reads the label on the phone in a language the user picks (21 languages, each added to English). OCR cannot recognise products or translate, so the text is shown for correction. If the browser supports `BarcodeDetector` and a barcode is in the photo, the barcode lookup is tried first.
 
 ## 8. Restaurants
 
@@ -118,7 +125,9 @@ Coverage today: about 110 groups and 1,800 names, including E and INS numbers an
 
 ## 10. Testing
 
-**Engine tests** (`node tests/engine.test.js`, 26 cases, all passing) cover gummies with gelatin and E120, chocolate with vanilla extract, Indian biscuits with INS numbers, Nutella, prawns and crab under different schools, perfume alcohol under Hanafi and Shafi'i views, fatty alcohols, carmine lipstick, alcohol-free beer, negations, halal-certified products, pork vs fish gelatin, wine vinegar and mirin. The test also checks that every evidence id exists.
+**API tests** (`node tests/api.test.js`, 11 checks, no real Claude calls) cover AI on/off reporting, refusing other websites, unknown tasks and non-image uploads, input trimming and tolerant JSON parsing.
+
+**Engine tests** (`node tests/engine.test.js`, 29 cases, all passing; `npm test` runs both) cover gummies with gelatin and E120, chocolate with vanilla extract, Indian biscuits with INS numbers, Nutella, prawns and crab under different schools, perfume alcohol under Hanafi and Shafi'i views, fatty alcohols, carmine lipstick, alcohol-free beer, negations, halal-certified products, pork vs fish gelatin, wine vinegar and mirin. The test also checks that every evidence id exists.
 
 **Browser tests** on the hosted build: tab switching, example chips, ingredient check with a chosen school, barcode lookup (Nutella 3017624010701 returned its real ingredient list), restaurant hints and links, library search, and no sideways scrolling at phone width.
 
@@ -132,6 +141,7 @@ Coverage today: about 110 groups and 1,800 names, including E and INS numbers an
 | "Best before date" matched "dates" | The single word "date" was removed |
 | Open Food Facts name search returned 503 errors | The app explains the problem and offers barcode or photo instead |
 | A barcode typed into the search box showed "not enough information" | Barcodes now skip the name analysis and go straight to lookup |
+| A photo of products without a visible ingredient list gave no answer, and only English labels worked | Lens-style recognition in any language, per-product verdicts, and multi-language on-device OCR (section 7) |
 
 **Not yet tested**: the Claude features on the live claude.ai page, OCR accuracy on real phone photos, and installation on iPhone and Android home screens.
 

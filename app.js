@@ -122,42 +122,97 @@
   }
 
   // ---------- Scan tab ----------
+  // The current scanned item: what the report box shows and what "Check again" re-checks.
+  var cur = { title: 'From your photo', source: 'Photo', extra: '', notes: '', fromLabel: true };
+  var VRANK = { x: 6, d: 5, m: 4, n: 3, hc: 2, h: 1, u: 0 };
+
   function onPhoto(file) {
     if (!file) return;
     $('preview').src = URL.createObjectURL(file); $('preview').hidden = false;
     $('scanOut').textContent = ''; $('scanTextWrap').hidden = true;
     var status = $('scanStatus');
-    HL.readLabel(file, function (msg) { status.textContent = msg; }).then(function (res) {
+    status.textContent = 'Working…';
+    HL.readLabel(file, function (msg) { status.textContent = msg; }, $('ocrLang').value).then(function (res) {
       status.textContent = res.note || '';
-      if (res.product) { $('scanOut').appendChild(HL.report(HL.analyze(HL.offText(res.product), HL.opts()), { title: res.product.product_name || 'Scanned barcode', source: 'Barcode · Open Food Facts' })); return; }
+      if (res.product) {
+        $('scanOut').appendChild(HL.report(HL.analyze(HL.offText(res.product), HL.opts()), { title: res.product.product_name || 'Scanned barcode', source: 'Barcode · Open Food Facts' }));
+        return;
+      }
+      if (res.mode === 'vision') { status.textContent = ''; showVision(res.data); return; }
+      cur = { title: 'From your photo', source: 'Photo, read on your device', extra: '', notes: '', fromLabel: true };
       $('scanText').value = res.text || '';
       $('scanTextWrap').hidden = false;
-      scanCheck(res.extra || '');
+      $('scanOut').appendChild(el('div', { class: 'panel', id: 'scanReport' }));
+      scanCheck();
     }).catch(function (e) {
       status.textContent = e && e.message ? e.message : 'Could not read the photo. Type the ingredients in the Check tab instead.';
       $('scanText').value = ''; $('scanTextWrap').hidden = false;
     });
   }
-  var scanExtra = '';
-  function scanCheck(extra) {
-    if (extra != null) scanExtra = extra;
-    var txt = $('scanText').value.trim();
+
+  function showVision(j) {
     var out = $('scanOut'); out.textContent = '';
+    out.appendChild(el('div', { class: 'card' }, [
+      el('h2', { text: 'What the camera sees' }),
+      j.summary ? el('p', { text: String(j.summary) }) : null,
+      j.textSeen ? el('p', { class: 'hint', text: 'Text read: ' + j.textSeen }) : null,
+      j.language ? el('div', { class: 'meta' }, [el('span', { class: 'tag', text: 'Language: ' + j.language })]) : null
+    ]));
+    var items = j.products.map(function (p) {
+      var t = HL.productText(p);
+      return { p: p, t: t, r: HL.analyze(t.ingredients + (t.extra ? '; ' + t.extra : ''), HL.opts()) };
+    });
+    var list = el('div', { class: 'list-gap' });
+    if (items.length > 1) out.appendChild(el('div', { class: 'card' }, [el('h2', { text: items.length + ' products found' }), el('p', { class: 'hint', text: 'Tap one to see its details.' }), list]));
+    out.appendChild(el('div', { class: 'panel', id: 'scanReport' }));
+    function pick(i) {
+      var a = items[i];
+      [].forEach.call(list.children, function (b, k) { b.setAttribute('aria-pressed', String(k === i)); });
+      cur = {
+        title: [a.p.name, a.p.brand].filter(Boolean).join(' · ') || a.p.type || 'From your photo',
+        source: a.t.fromLabel ? 'Read from the label' : 'Typical recipe',
+        extra: a.t.extra, notes: a.p.notes || '', fromLabel: a.t.fromLabel, type: a.p.type || ''
+      };
+      $('scanText').value = a.t.ingredients;
+      $('scanTextWrap').hidden = false;
+      scanCheck();
+    }
+    items.forEach(function (a, i) {
+      list.appendChild(el('button', { type: 'button', class: 'prod', onclick: function () { pick(i); $('scanReport').scrollIntoView({ block: 'start' }); } }, [
+        el('span', { class: 'ph' }),
+        el('span', null, [el('b', { text: a.p.name || a.p.type || 'Product ' + (i + 1) }), el('br'), el('span', { class: 'hint', text: [a.p.brand, a.p.type].filter(Boolean).join(' · ') })]),
+        HL.pill(a.r.verdict)
+      ]));
+    });
+    var worst = 0;
+    items.forEach(function (a, i) { if (VRANK[a.r.verdict] > VRANK[items[worst].r.verdict]) worst = i; });
+    pick(worst);
+  }
+
+  function scanCheck() {
+    var txt = $('scanText').value.trim();
+    var box = $('scanReport');
+    if (!box) { box = el('div', { class: 'panel', id: 'scanReport' }); $('scanOut').appendChild(box); }
+    box.textContent = '';
     if (!txt) return;
-    lastRun = function () { scanCheck(); };
-    out.appendChild(HL.report(HL.analyze(txt + (scanExtra ? '; ' + scanExtra : ''), HL.opts()), { title: 'From your photo', source: 'Photo' }));
+    lastRun = scanCheck;
+    if (!cur.fromLabel) box.appendChild(el('p', { class: 'note', text: 'No ingredient list was visible, so these are the usual ingredients of ' + (cur.type || 'this product') + ' from Claude’s knowledge. Photograph the ingredient list to be sure.' }));
+    if (cur.notes) box.appendChild(el('p', { class: 'note', text: cur.notes }));
+    box.appendChild(HL.report(HL.analyze(txt + (cur.extra ? '; ' + cur.extra : ''), HL.opts()), { title: cur.title, source: cur.source }));
   }
   ['cam', 'pick'].forEach(function (id) { $(id).addEventListener('change', function () { onPhoto(this.files && this.files[0]); this.value = ''; }); });
-  $('recheck').addEventListener('click', function () { scanCheck(); });
+  $('recheck').addEventListener('click', function () { cur.source = 'Edited text'; scanCheck(); });
   document.addEventListener('paste', function (e) {
     if ($('scan').hidden) return;
     var f = [].slice.call((e.clipboardData && e.clipboardData.files) || []).find(function (x) { return /^image\//.test(x.type); });
     if (f) onPhoto(f);
   });
   HL.updateScanEngine = function () {
-    $('scanEngine').textContent = CAP.images ? 'Claude reads the label, then Halal Lens checks every ingredient against its library.'
-      : CAP.sample === null ? 'Getting ready…'
-      : 'The label is read on your device (works best on clear, well-lit English text). You can correct the text before checking.';
+    var ai = CAP.mode && CAP.images;
+    $('scanEngine').textContent = ai ? 'Works like Google Lens: photograph a pack, an ingredient list, a dish or a menu in any language. Claude recognises it, then Halal Lens checks every ingredient.'
+      : CAP.mode === undefined ? 'Getting ready…'
+      : 'The label is read on your device. Pick the label’s language below; you can correct the text before checking.';
+    $('ocrLangWrap').hidden = !!ai || CAP.mode === undefined;
   };
   HL.updateScanEngine();
 
@@ -186,7 +241,7 @@
   HL.renderLearn();
 
   // ---------- capabilities (Claude artifact) ----------
-  HL.sampleReady.then(HL.updateScanEngine);
+  HL.aiReady.then(HL.updateScanEngine);
   if (!HL.inArtifact) {
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       try { navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {}
