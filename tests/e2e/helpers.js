@@ -8,6 +8,8 @@ const test = base.test.extend({
     page.on('pageerror', (e) => page.errors.push(String(e)));
     page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|net::ERR/.test(m.text())) page.errors.push(m.text()); });
     await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+    // Barcode reading is faked as "no barcode found" unless a test sets its own ZXing stub.
+    await page.addInitScript(() => { window.ZXing = { BrowserMultiFormatReader: function () { this.decodeFromImageUrl = async () => { throw new Error('NotFoundException'); }; } }; });
     await use(page);
   }
 });
@@ -16,12 +18,13 @@ const expect = base.expect;
 // A valid 1x1 PNG, enough for photo uploads.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
-/* Turn the site's AI on. reply(body) returns either a result object, or {httpError, code} for an error. */
-async function withAI(page, reply) {
+/* Turn the site's AI on. reply(body) returns either a result object, or {httpError, code} for an error.
+   provider: 'claude' (default) or 'gemini' (the free option). */
+async function withAI(page, reply, provider) {
   page.aiCalls = [];
   await page.route('**/api/ask', async (route) => {
     const req = route.request();
-    if (req.method() === 'GET') return route.fulfill({ json: { ai: true } });
+    if (req.method() === 'GET') return route.fulfill({ json: { ai: true, provider: provider || 'claude' } });
     const body = req.postDataJSON();
     page.aiCalls.push(body);
     const out = await reply(body);

@@ -1,5 +1,5 @@
 // Photo scanning scenarios (SCN): on-device OCR, Lens-style AI recognition, fallbacks, uploads.
-const { test, expect, PNG, withAI, withoutAI, stubOCR, openTab } = require('./helpers');
+const { test, expect, PNG, withAI, withoutAI, withProducts, stubOCR, openTab } = require('./helpers');
 
 const report = (page) => page.locator('#scanReport .verdict h2');
 async function upload(page) {
@@ -22,7 +22,7 @@ test.describe('without AI (on-device reading)', () => {
 
   test('SCN-01 the language picker and on-device message are shown', async ({ page }) => {
     await expect(page.locator('#ocrLangWrap')).toBeVisible();
-    await expect(page.locator('#scanEngine')).toContainText('read on your device');
+    await expect(page.locator('#scanEngine')).toContainText('Free mode');
   });
 
   test('SCN-02 the photo is read on the device and checked', async ({ page }) => {
@@ -46,6 +46,20 @@ test.describe('without AI (on-device reading)', () => {
     await upload(page);
     await expect(page.locator('#scanText')).not.toHaveValue('');
     expect(await page.evaluate(() => window.__ocrLangs)).toBe('eng+ara');
+  });
+
+  test('SCN-13 a barcode photo finds the product in Open Food Facts, also where the browser has no barcode reader (iPhone)', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.BarcodeDetector = undefined;
+      window.ZXing = { BrowserMultiFormatReader: function () { this.decodeFromImageUrl = async () => ({ getText: () => '3017624010701' }); } };
+    });
+    await withProducts(page, 'ok');
+    await page.reload();
+    await openTab(page, 'Scan');
+    await expect(page.locator('#scanEngine')).toContainText('photograph the barcode');
+    await upload(page);
+    await expect(page.locator('#scanOut .verdict h2')).toHaveText('Halal');
+    await expect(page.locator('#scanOut .verdict .lbl')).toHaveText('Nutella');
   });
 
   test('SCN-12 pasting an image in the Scan tab scans it', async ({ page }) => {
@@ -73,6 +87,15 @@ test.describe('with AI (Lens-style recognition)', () => {
     await expect(report(page)).toHaveText('Doubtful (mushbooh)');
     await expect(page.locator('#scanReport .tag', { hasText: 'Read from the label' })).toBeVisible();
     expect(page.aiCalls[0].task).toBe('scan');
+  });
+
+  test('SCN-14 with the free Gemini option, the scanner names Gemini', async ({ page }) => {
+    await withAI(page, () => scanReply([product({ name: 'Baileys chocolate bottle', type: 'liqueur-filled chocolate', typicalIngredients: 'milk chocolate, Irish cream liqueur (17%)' })]), 'gemini');
+    await page.goto('/index.html'); await openTab(page, 'Scan');
+    await expect(page.locator('#scanEngine')).toContainText('Gemini recognises it');
+    await upload(page);
+    await expect(page.locator('#scanReport .note').first()).toContainText('from Gemini’s knowledge');
+    await expect(report(page)).toHaveText('Haram');
   });
 
   test('SCN-06 several products are listed, the most serious opens first, and tapping switches', async ({ page }) => {

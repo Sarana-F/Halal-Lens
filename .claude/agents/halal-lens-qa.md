@@ -8,7 +8,7 @@ You are the QA tester for Halal Lens, a halal checker for food, cosmetics and re
 ## Ground rules
 
 - `TEST-PLAN.md` is the source of truth. Every result you report uses its scenario IDs (ENG, DAT, API, SMK, CHK, PRD, SCN, RST, LRN, PWA, UI, A11Y, SEC, PERF, LIVE, MAN).
-- Never run `npm run test:live` without asking the user first in plain words: it makes real Claude calls billed to their API key (about $0.30 per run).
+- Never run `npm run test:live` without asking the user first in plain words: it makes real AI calls. With `ANTHROPIC_API_KEY` they are billed (about $0.30 per run); with only `GEMINI_API_KEY` they are free but use up part of the daily free allowance.
 - Do not edit app files, tests or data. If a test itself looks wrong, say so in the report with your reasoning.
 - Religious rulings: you check that each ruling matches its own cited evidence and the scholarly position described in `evidence.js`. You never change a ruling; you flag doubts for a knowledgeable person to review.
 - Report only what you saw. If something could not be tested, list it under "Not tested" with the reason.
@@ -17,7 +17,7 @@ You are the QA tester for Halal Lens, a halal checker for food, cosmetics and re
 
 1. **Prepare.** In the project folder run `npm ci` if `node_modules` is missing, and `npx playwright install chromium` if the browser is missing.
 2. **Automated tests.** Run `npm run test:all`. This runs `tests/engine.test.js`, `tests/data.test.js`, `tests/api.test.js` and the Playwright browser tests on phone, tablet and desktop. Read `test-results/e2e-results.json` for browser results. For every failure, open its screenshot and `error-context.md` under `test-results/e2e-artifacts/` and work out whether it is an app bug, a test bug or a flaky run (re-run that one test once with `npx playwright test -g "<ID>"` to tell).
-3. **Live AI (only with permission).** If `ANTHROPIC_API_KEY` is set and the user agrees, run `npm run test:live`.
+3. **Live AI (only with permission).** If `GEMINI_API_KEY` or `ANTHROPIC_API_KEY` is set and the user agrees, run `npm run test:live`.
 4. **Exploratory testing.** Start the site with `node tests/serve.js . 5180` in the background and open `http://localhost:5180/index.html` in the browser. Cover at least:
    - **MAN-08 odd input**: emoji only, numbers only, a 5,000-word paste, mixed scripts, a list with 300 items, repeated commas, HTML and script tags. Nothing should break, freeze or run code.
    - **MAN-09 evidence**: open at least 10 evidence links from different ingredients. Each Qur'an link must open the cited verse and the verse must support the stated meaning; each hadith search must find the cited narration.

@@ -7,7 +7,7 @@ Every scenario has an ID. Automated tests use the same ID in their name, so a fa
 | **Unit**: engine rulings, data integrity, server API | `npm test` | Free |
 | **Browser (E2E)**: every screen on phone, tablet and desktop sizes, AI and product database faked | `npm run test:e2e` | Free |
 | **Everything above** | `npm run test:all` | Free |
-| **Live AI**: real Claude calls through `api/ask.js` | `npm run test:live` (needs `ANTHROPIC_API_KEY`) | About $0.30 per run |
+| **Live AI**: real AI calls through `api/ask.js` | `npm run test:live` (needs `GEMINI_API_KEY` or `ANTHROPIC_API_KEY`) | Free with Gemini; about $0.30 per run with Claude |
 | **QA agent**: runs all free tests, then explores the manual scenarios and writes a report | In Claude Code: "use the halal-lens-qa agent to test the app" | Your Claude plan |
 | **On GitHub**: unit + browser tests on every push; live AI only when started by hand | Actions tab | Free (public repo) |
 
@@ -72,6 +72,17 @@ About 130 table-driven cases. Groups:
 | API-19 | Other Claude errors and network failures return `upstream_error` |
 | API-20 | More than 30 requests in 10 minutes from one visitor are refused |
 | API-21 | JSON parsing accepts bare, fenced and embedded JSON |
+| API-22 | With only `GEMINI_API_KEY`, GET reports the free Gemini provider |
+| API-23 | Gemini request: model, key sent in a header (never the URL), photo before instructions, JSON answer requested |
+| API-24 | When one Gemini model's free allowance is used up (429), the next model answers |
+| API-25 | When every free allowance is used up, visitors get `rate_limited` with a clear message |
+| API-26 | A Gemini model not offered to the key (404) is skipped |
+| API-27 | An invalid or blocked Gemini key returns `server_off` |
+| API-28 | Blocked prompts and safety stops return `refused` |
+| API-29 | A photo Gemini cannot use returns `image_rejected` |
+| API-30 | Network failures and Gemini server errors return `upstream_error` |
+| API-31 | A non-JSON Gemini answer returns `invalid_json` |
+| API-32 | `GEMINI_MODEL` goes first; with both keys Claude is used unless `HL_PROVIDER=gemini` |
 
 ## 4. Browser tests (E2E) — `tests/e2e/*.spec.js`
 
@@ -101,6 +112,7 @@ Run on a phone (Pixel 7 size), a tablet and a desktop browser. Open Food Facts, 
 | PRD-05 | AI does not know the product | Message and a button that opens the scanner |
 | PRD-06 | AI rate-limited | Message and a working "Try again" |
 | PRD-07 | "is kitkat halal?" | Treated as the product name "kitkat" |
+| PRD-08 | Free Gemini option on | The lookup names Gemini, never Claude |
 | SCN-01 | No AI available | Language picker shown; on-device reading explained |
 | SCN-02 | Photo, on-device reading | Text read, verdict shown, OCR note |
 | SCN-03 | Edit the text, Check again | Verdict updates |
@@ -113,6 +125,8 @@ Run on a phone (Pixel 7 size), a tablet and a desktop browser. Open Food Facts, 
 | SCN-10 | AI switched off or out of credit | Falls back to on-device reading |
 | SCN-11 | Photo upload size | Sent as a JPEG of at most 1600 px |
 | SCN-12 | Paste an image in the Scan tab | It is scanned |
+| SCN-13 | Free mode: photo of a barcode, on a browser with no built-in barcode reader (iPhone) | Barcode read, product found in Open Food Facts, full report |
+| SCN-14 | Free Gemini option on | The scanner names Gemini |
 | RST-01 | Names with bar, ramen, halal, kosher, vegan | Matching first impressions |
 | RST-02 | Links | Google Maps, Google, Zabihah, certificate, contact, Apple Maps; correct encoded addresses; open in a new tab |
 | RST-03 | Message and Copy | Message names the restaurant; button says "Copied" |
@@ -121,6 +135,7 @@ Run on a phone (Pixel 7 size), a tablet and a desktop browser. Open Food Facts, 
 | RST-06 | AI on, unknown restaurant | "No reliable information" message |
 | RST-07 | Empty name | Field focused, nothing shown |
 | RST-08 | Outside the Claude desktop app | No live web check card |
+| RST-09 | Free Gemini option on | The card is titled "What Gemini knows" |
 | LRN-01 | Principles | Nine principles, each with evidence |
 | LRN-02 | Library search "E471", "carmine" | Matching entries |
 | LRN-03 | Filter Haram | Only haram entries |
@@ -138,7 +153,7 @@ Run on a phone (Pixel 7 size), a tablet and a desktop browser. Open Food Facts, 
 | SEC-01 | Type `<img src=x onerror=alert(1)>` | Shown as text, never run |
 | PERF-01 | Load and check speed | Ready in under 3 s locally; a 300-item list checks in under 200 ms |
 
-## 5. Live AI (LIVE) — `tests/live/live-ai.test.js`, started by hand
+## 5. Live AI (LIVE) — `tests/live/live-ai.test.js`, started by hand (free with a Gemini key)
 
 | ID | Scenario | Expected |
 |---|---|---|

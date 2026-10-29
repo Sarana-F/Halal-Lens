@@ -70,6 +70,16 @@ test('PRD-06 an AI error shows a message and Try again works', async ({ page }) 
   await expect(page.getByRole('heading', { name: /Typical recipe: Mystery Bar/ })).toBeVisible();
 });
 
+test('PRD-08 with the free Gemini option, the lookup names Gemini', async ({ page }) => {
+  await withAI(page, () => MYSTERY, 'gemini'); await withProducts(page, 'busy');
+  await page.goto('/index.html');
+  await check(page, 'mystery bar');
+  const ai = page.locator('#checkOut .card.ai');
+  await expect(ai).toContainText('From Gemini’s knowledge');
+  await expect(ai.locator('.tag', { hasText: 'Gemini, typical recipe' })).toBeVisible();
+  await expect(ai).not.toContainText('Claude');
+});
+
 test('PRD-07 "is kitkat halal?" is treated as the product name', async ({ page }) => {
   await withAI(page, () => ({ known: false })); await withProducts(page, 'busy');
   await page.goto('/index.html');

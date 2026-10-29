@@ -75,6 +75,14 @@ test.describe('restaurants with AI', () => {
     expect(page.aiCalls[0]).toMatchObject({ task: 'restaurant', args: { name: 'KFC', city: 'Kuala Lumpur' } });
   });
 
+  test('RST-09 with the free Gemini option, the card names Gemini', async ({ page }) => {
+    await withAI(page, () => ({ known: false, status: 'unknown' }), 'gemini');
+    await page.goto('/index.html'); await openTab(page, 'Restaurants');
+    await ask(page, 'Tiny Corner Cafe', 'Madurai');
+    await expect(page.locator('#eatOut .card.ai h2')).toHaveText('What Gemini knows');
+    await expect(page.locator('#eatOut .card.ai')).toContainText('Gemini has no reliable information');
+  });
+
   test('RST-06 an unknown restaurant says Claude has no reliable information', async ({ page }) => {
     await withAI(page, () => ({ known: false, status: 'unknown' }));
     await page.goto('/index.html'); await openTab(page, 'Restaurants');

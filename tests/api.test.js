@@ -97,6 +97,79 @@ function check(id, ok, msg) { total++; if (!ok) fail++; console.log((ok ? 'PASS 
 
   check('API-21', T.parseJSON('{"a":1}').a === 1 && T.parseJSON('Result: {"a":3} done').a === 3 && T.parseJSON('[1,2]')[1] === 2 && T.parseJSON('no json') === undefined, 'JSON parsing: bare, embedded, arrays, and plain text');
 
+  // ---------- Free provider: Google Gemini (fetch is faked; nothing leaves the machine) ----------
+  const calls = [];
+  function gfetch(replies) {
+    calls.length = 0;
+    T.setFetch(async (url, opt) => {
+      calls.push({ url, opt, body: JSON.parse(opt.body) });
+      const r = replies.shift();
+      if (r instanceof Error) throw r;
+      return { ok: r.status < 300, status: r.status, json: async () => r.json };
+    });
+  }
+  const gOk = (text, extra) => ({ status: 200, json: Object.assign({ candidates: [{ content: { parts: [{ text }] }, finishReason: 'STOP' }] }, extra) });
+  const gErr = (status, details) => ({ status, json: { error: { code: status, message: 'error ' + status, details: details || [] } } });
+  const ask = (body) => call('POST', body || { task: 'product', args: { q: 'x' } }, null, '10.7.7.' + (++ipCounter));
+  let ipCounter = 0;
+
+  delete process.env.ANTHROPIC_API_KEY;
+  process.env.GEMINI_API_KEY = 'gemini-test-key';
+  r = await call('GET');
+  check('API-22', r.body.ai === true && r.body.provider === 'gemini', 'GET reports the free Gemini provider when only GEMINI_API_KEY is set');
+
+  gfetch([gOk('{"readable":true,"products":[]}')]);
+  r = await ask({ task: 'scan', args: { ctx: 'food' }, image: photo });
+  const g = calls[0] || { body: { contents: [{ parts: [] }] }, opt: { headers: {} } };
+  const parts = g.body.contents[0].parts;
+  check('API-23', r.status === 200 && r.body.result.readable === true && r.body.provider === 'gemini' &&
+    /\/models\/gemini-3\.8-flash:generateContent$/.test(g.url) && g.opt.headers['x-goog-api-key'] === 'gemini-test-key' && !/key=/.test(g.url) &&
+    parts[0].inline_data.mime_type === 'image/jpeg' && /JSON/.test(parts[1].text) && g.body.generationConfig.responseMimeType === 'application/json',
+    'Gemini request: model, key in a header (not the URL), photo before instructions, JSON answer requested');
+
+  gfetch([gErr(429), gOk('{"known":true}')]);
+  r = await ask();
+  check('API-24', r.status === 200 && calls.length === 2 && /gemini-3\.5-flash-lite/.test(calls[1].url), 'when one model\'s free allowance is used up, the next model answers');
+  gfetch([gErr(429), gErr(429)]);
+  r = await ask();
+  check('API-25', r.status === 429 && r.body.code === 'rate_limited' && /free AI allowance/.test(r.body.error), 'when every free allowance is used up, the visitor is told');
+  gfetch([gErr(404), gOk('{"known":true}')]);
+  r = await ask();
+  check('API-26', r.status === 200 && calls.length === 2, 'a model not offered to this key is skipped');
+  gfetch([gErr(400, [{ reason: 'API_KEY_INVALID' }])]);
+  r = await ask();
+  gfetch([gErr(403)]);
+  const r4 = await ask();
+  check('API-27', r.status === 500 && r.body.code === 'server_off' && r4.body.code === 'server_off', 'an invalid or blocked Gemini key returns server_off');
+  gfetch([{ status: 200, json: { promptFeedback: { blockReason: 'SAFETY' }, candidates: [] } }]);
+  r = await ask();
+  gfetch([gOk('', { candidates: [{ content: { parts: [] }, finishReason: 'SAFETY' }] })]);
+  const r5 = await ask();
+  check('API-28', r.status === 422 && r.body.code === 'refused' && r5.body.code === 'refused', 'blocked prompts and safety stops return refused');
+  gfetch([gErr(400)]);
+  r = await ask({ task: 'scan', args: {}, image: photo });
+  check('API-29', r.status === 400 && r.body.code === 'image_rejected', 'a photo Gemini cannot use returns image_rejected');
+  gfetch([new Error('ECONNRESET')]);
+  r = await ask();
+  gfetch([gErr(500)]);
+  const r6 = await ask();
+  check('API-30', r.body.code === 'upstream_error' && r6.status === 502 && r6.body.code === 'upstream_error', 'network failures and Gemini server errors return upstream_error');
+  gfetch([gOk('Sorry, I cannot tell.')]);
+  r = await ask();
+  check('API-31', r.status === 502 && r.body.code === 'invalid_json', 'a non-JSON Gemini answer returns invalid_json');
+
+  process.env.GEMINI_MODEL = 'gemini-3.6-flash';
+  const models = T.geminiModels();
+  delete process.env.GEMINI_MODEL;
+  process.env.ANTHROPIC_API_KEY = 'test-key-not-real';
+  const both = T.provider();
+  process.env.HL_PROVIDER = 'gemini';
+  const forced = T.provider();
+  delete process.env.HL_PROVIDER;
+  delete process.env.GEMINI_API_KEY;
+  check('API-32', models[0] === 'gemini-3.6-flash' && models.length === 3 && both === 'claude' && forced === 'gemini',
+    'GEMINI_MODEL goes first; with both keys Claude is used unless HL_PROVIDER=gemini');
+
   console.log((total - fail) + '/' + total + ' API checks passed');
   process.exit(fail ? 1 : 0);
 })();

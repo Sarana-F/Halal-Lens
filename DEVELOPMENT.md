@@ -108,6 +108,12 @@ Coverage today: about 110 groups and 1,800 names, including E and INS numbers an
 - Claude is reached through the viewer's own account inside claude.ai, or through `api/ask.js` on Vercel when an `ANTHROPIC_API_KEY` is set. The server builds the prompt itself, accepts only the three fixed tasks, refuses other websites, rate-limits each visitor, rejects photos over 4 MB (the browser downsizes them to 1600 px first), and uses server-side refusal fallbacks.
 - **Without AI**, Tesseract.js 5.1.1 reads the label on the phone in a language the user picks (21 languages, each added to English). OCR cannot recognise products or translate, so the text is shown for correction. If the browser supports `BarcodeDetector` and a barcode is in the photo, the barcode lookup is tried first.
 
+### Free alternative to a paid key (version 1.3)
+
+The hosted site can now use **Google Gemini's free tier** instead of Claude. Set `GEMINI_API_KEY` in Vercel (created free at aistudio.google.com, no card). `api/ask.js` picks the provider from the keys present, calls Gemini's REST API with the key in a header, asks for a JSON answer, and on a 429 (that model's free daily allowance used up) or 404 it tries a second free model before telling the visitor to come back later. Screens name whichever AI answered. Trade-offs: lower daily limits, and Google may use free-tier requests to improve its products. Models were checked against Google's pricing and model pages on 29 October 2026: `gemini-3.8-flash` (default) and `gemini-3.5-flash-lite` are free; `gemini-2.5-flash` is closed to new users.
+
+**Free mode without any key** also improved: barcode photos are now read on iPhones and desktops too (ZXing library, loaded only when the browser has no barcode reader), so a photo of the barcode finds the product's real ingredient list in Open Food Facts.
+
 ## 8. Restaurants
 
 1. **Name hints**: words like "halal", "bar", "brewery", "ramen" or "kosher" give a first impression.

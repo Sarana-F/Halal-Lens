@@ -16,15 +16,22 @@ window.HL = window.HL || {};
     : Promise.resolve(null);
 
   function timeout(ms) { try { return AbortSignal.timeout(ms); } catch (e) { return undefined; } }
-  // Does this site have the Claude API function (Vercel + ANTHROPIC_API_KEY)?
+  // Does this site have the AI function (Vercel + ANTHROPIC_API_KEY, or a free GEMINI_API_KEY)?
   HL.serverReady = HL.inArtifact || location.protocol === 'file:' ? Promise.resolve(false)
     : fetch('api/ask', { signal: timeout(6000) }).then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (j) { return !!(j && j.ai); }, function () { return false; });
+      .then(function (j) {
+        if (!(j && j.ai)) return false;
+        HL.CAP.provider = j.provider === 'gemini' ? 'gemini' : 'claude';
+        return true;
+      }, function () { return false; });
   HL.aiReady = Promise.all([HL.sampleReady, HL.serverReady]).then(function (v) {
     HL.CAP.mode = v[0] ? 'claude' : v[1] ? 'server' : null;
+    if (v[0]) HL.CAP.provider = 'claude';
     if (v[1]) HL.CAP.images = true;
     return HL.CAP.mode;
   });
+  /* The name of the AI answering, for on-screen text. */
+  HL.aiName = function () { return HL.CAP.provider === 'gemini' ? 'Gemini' : 'Claude'; };
 
   function blobToBase64(blob) {
     return new Promise(function (res, rej) {
@@ -77,16 +84,16 @@ window.HL = window.HL || {};
     return ({
       not_granted: 'Claude access was not allowed for this page. You can still type or paste ingredients.',
       sampling_disabled: 'Claude is not available on this account.',
-      rate_limited: 'Too many requests right now. Wait a minute and try again.',
+      rate_limited: 'Too many requests right now, or today’s free AI allowance is used up. Wait a while and try again.',
       session_expired: 'Sign in to Claude again, then try again.',
-      refused: 'Claude could not answer this request.',
+      refused: 'The AI could not answer this request.',
       invalid_json: 'The answer came back in an unexpected shape. Try again.',
       image_rejected: 'That image could not be used. Try a JPG or PNG photo.',
       images_unavailable: 'Photos cannot be sent to Claude in this view.',
       too_large: 'The photo is too large. Try again; the app shrinks it automatically.',
       server_off: 'AI reading is not switched on for this website yet.',
       no_credit: 'AI reading is paused because this website’s AI credit has run out.',
-      empty_completion: 'Claude returned nothing. Try again.',
+      empty_completion: 'The AI returned nothing. Try again.',
       cancelled: 'Stopped.'
     })[e && e.code] || 'The AI service could not be reached. Check your connection and try again.';
   };
@@ -114,7 +121,7 @@ window.HL = window.HL || {};
     return (p.ingredients_text_en || p.ingredients_text || '') + (extra.length ? '; ' + extra.join('; ') : '');
   };
 
-  // ---------- Claude product lookup ----------
+  // ---------- AI product lookup ----------
   HL.aiProductCard = function (q, box, auto) {
     HL.aiReady.then(function (mode) {
       if (!mode) return;
@@ -122,27 +129,27 @@ window.HL = window.HL || {};
       box.appendChild(card);
       function idle() {
         card.textContent = '';
-        card.appendChild(el('h2', { text: 'Ask Claude about “' + q + '”' }));
-        card.appendChild(el('p', { class: 'hint', text: 'Claude can list this product’s typical ingredients and where it is halal-certified. Halal Lens then checks each ingredient.' }));
-        card.appendChild(el('button', { type: 'button', class: 'btn ghost', text: 'Look up with Claude', onclick: go }));
+        card.appendChild(el('h2', { text: 'Ask ' + HL.aiName() + ' about “' + q + '”' }));
+        card.appendChild(el('p', { class: 'hint', text: HL.aiName() + ' can list this product’s typical ingredients and where it is halal-certified. Halal Lens then checks each ingredient.' }));
+        card.appendChild(el('button', { type: 'button', class: 'btn ghost', text: 'Look up with ' + HL.aiName(), onclick: go }));
       }
       function go() {
         card.textContent = '';
-        card.appendChild(el('h2', { text: 'Claude’s product lookup' }));
+        card.appendChild(el('h2', { text: HL.aiName() + '’s product lookup' }));
         var st = el('p', { class: 'status', text: mode === 'claude' ? 'Thinking… (the first time, Claude asks your permission)' : 'Thinking…' });
         card.appendChild(st);
         HL.ai('product', { q: q, ctx: HL.S.ctx }).then(function (j) {
           card.textContent = '';
           if (!j || !j.known || !j.ingredients) {
-            card.appendChild(el('h2', { text: 'Claude doesn’t know this product' }));
+            card.appendChild(el('h2', { text: HL.aiName() + ' doesn’t know this product' }));
             card.appendChild(el('p', { class: 'hint', text: 'Photograph the pack or its ingredient list instead.' }));
             card.appendChild(el('button', { type: 'button', class: 'btn ghost', text: 'Open the scanner', onclick: function () { HL.show('scan'); } }));
             return;
           }
           var r = HL.analyze(String(j.ingredients), HL.opts());
           card.appendChild(el('h2', { text: 'Typical recipe: ' + j.product + (j.brand ? ' · ' + j.brand : '') }));
-          card.appendChild(el('p', { class: 'hint', text: 'From Claude’s knowledge (confidence: ' + (j.confidence || 'unknown') + '). Recipes change and differ by country, so confirm with the ingredients on your pack.' }));
-          card.appendChild(HL.report(r, { title: j.product, source: 'Claude, typical recipe' }));
+          card.appendChild(el('p', { class: 'hint', text: 'From ' + HL.aiName() + '’s knowledge (confidence: ' + (j.confidence || 'unknown') + '). Recipes change and differ by country, so confirm with the ingredients on your pack.' }));
+          card.appendChild(HL.report(r, { title: j.product, source: HL.aiName() + ', typical recipe' }));
           var dl = el('dl', { class: 'kv' });
           if (j.halalCertification) { dl.appendChild(el('dt', { text: 'Certification' })); dl.appendChild(el('dd', { text: String(j.halalCertification) })); }
           if (j.variesByCountry) { dl.appendChild(el('dt', { text: 'By country' })); dl.appendChild(el('dd', { text: String(j.variesByCountry) })); }
@@ -159,17 +166,30 @@ window.HL = window.HL || {};
   };
 
   // ---------- Reading a photo ----------
+  // Barcodes: the browser's own detector (Android Chrome), else the ZXing library (iPhone Safari, desktop).
+  var ZXING_URL = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.23.0/umd/index.min.js';
+  function zxingRead(file) {
+    return (window.ZXing ? Promise.resolve() : loadScript(ZXING_URL)).then(function () {
+      var url = URL.createObjectURL(file);
+      var done = function (v) { URL.revokeObjectURL(url); return v; };
+      return new window.ZXing.BrowserMultiFormatReader().decodeFromImageUrl(url)
+        .then(function (r) { return done(r && r.getText ? r.getText() : null); }, function () { return done(null); });
+    }).catch(function () { return null; });
+  }
   function tryBarcode(file) {
-    if (HL.inArtifact || !('BarcodeDetector' in window) || !window.createImageBitmap) return Promise.resolve(null);
-    return createImageBitmap(file).then(function (bmp) {
-      return new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] }).detect(bmp);
-    }).then(function (c) { return c && c[0] ? c[0].rawValue : null; }, function () { return null; });
+    if (HL.inArtifact) return Promise.resolve(null);
+    var native = ('BarcodeDetector' in window) && window.BarcodeDetector && window.createImageBitmap
+      ? createImageBitmap(file).then(function (bmp) { return new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] }).detect(bmp); })
+        .then(function (c) { return c && c[0] ? c[0].rawValue : null; })
+      : Promise.reject(new Error('no native detector'));
+    return native.catch(function () { return zxingRead(file); })
+      .then(function (code) { return code && /^\d{8,14}$/.test(code) ? code : null; });
   }
   function loadScript(src) {
     return new Promise(function (res, rej) {
       var sc = document.createElement('script');
       sc.src = src; sc.onload = res;
-      sc.onerror = function () { rej(new Error('The on-device text reader could not load. Check your connection, or type the ingredients in the Check tab.')); };
+      sc.onerror = function () { rej(new Error('A reading tool could not load. Check your connection, or type the ingredients in the Check tab.')); };
       document.head.appendChild(sc);
     });
   }

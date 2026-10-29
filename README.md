@@ -38,12 +38,22 @@ The site is static: any host that serves files works.
 
 **Vercel**: import this GitHub repository at https://vercel.com/new, keep Framework Preset "Other", leave the build command empty, and deploy. Every push to `main` redeploys.
 
-**Turn on Lens-style scanning (Vercel only).** Without this, photos are read on the phone (OCR), which needs a clear ingredient list and cannot translate. With it, Claude recognises packs, dishes and menus in any language, like Google Lens, and also looks up unknown product names and restaurants.
-1. Create an API key at https://console.anthropic.com → Settings → API keys. Set a monthly spend limit there.
-2. In Vercel: your project → Settings → Environment Variables → add `ANTHROPIC_API_KEY` with the key.
+**Turn on Lens-style scanning (Vercel only).** Without an AI key the site runs in free mode: barcode photos are looked up in Open Food Facts and ingredient lists are read on the phone (OCR, no translation). With a key, the AI recognises packs, dishes and menus in any language, like Google Lens, and also looks up unknown product names and restaurants. Pick one:
+
+*Free: Google Gemini (no card needed)*
+1. Go to https://aistudio.google.com, sign in with a Google account, and choose **Get API key** → **Create API key**.
+2. In Vercel: your project → Settings → Environment Variables → add `GEMINI_API_KEY` with the key.
 3. Deployments → the latest one → ⋯ → Redeploy.
 
-The key stays on the server (`api/ask.js`); the browser never sees it. The function only accepts this site's three fixed tasks, refuses other websites, and limits each visitor to 30 requests per 10 minutes. It uses Claude Opus 5.5, roughly 3 to 5 US cents per photo. Optional settings: `HL_MODEL`, `HL_EFFORT` (`low`, `medium`, `high`), `HL_RATE_LIMIT`.
+The free tier has daily limits per model (low hundreds of requests a day); when one model's allowance runs out the site tries a second model, then tells visitors to come back later. Google may use free-tier requests to improve its products, so don't photograph anything private. Optional: `GEMINI_MODEL` to choose a different free model (default `gemini-3.8-flash`, then `gemini-3.5-flash-lite`).
+
+*Paid: Claude (most accurate)*
+1. Create an API key at https://console.anthropic.com → Settings → API keys, buy credit and set a monthly spend limit.
+2. In Vercel add `ANTHROPIC_API_KEY`, then redeploy. If both keys are set, Claude is used unless `HL_PROVIDER=gemini`.
+
+It uses Claude Opus 5.5, roughly 3 to 5 US cents per photo. Optional: `HL_MODEL`, `HL_EFFORT` (`low`, `medium`, `high`).
+
+Either way the key stays on the server (`api/ask.js`); the browser never sees it. The function only accepts this site's three fixed tasks, refuses other websites, and limits each visitor to 30 requests per 10 minutes (`HL_RATE_LIMIT`).
 
 **GitHub Pages**: repository Settings → Pages → Deploy from branch `main`, folder `/ (root)`.
 
@@ -62,7 +72,7 @@ There is also a claude.ai version for signed-in Claude users, where Claude reads
 | `engine.js` | Reads an ingredient list and works out the verdict |
 | `render.js`, `app.js`, `services.js`, `eat.js` | Screens, photo reading, product lookup, restaurant check |
 | `prompts.js` | The instructions sent to Claude (shared by the browser and the server) |
-| `api/ask.js` | Vercel function that calls Claude with the server's API key |
+| `api/ask.js` | Vercel function that calls Gemini (free) or Claude with the server's API key |
 | `manifest.webmanifest`, `sw.js`, `icon.svg` | Make the site installable and usable offline |
 | `tests/`, `playwright.config.js` | Engine, data, API, browser and live AI tests |
 | `TEST-PLAN.md` | Every test scenario with its ID |
@@ -79,11 +89,11 @@ There is also a claude.ai version for signed-in Claude users, where Claude reads
 | `npm test` | Engine rulings (195 checks), data integrity, server API with Claude faked | Free |
 | `npm run test:e2e` | Browser tests on phone, tablet and desktop sizes (first time: `npx playwright install chromium`) | Free |
 | `npm run test:all` | Both of the above | Free |
-| `npm run test:live` | Real Claude calls: product, restaurant, Spanish and Arabic labels, a pack front | About $0.30, needs `ANTHROPIC_API_KEY` |
+| `npm run test:live` | Real AI calls: product, restaurant, Spanish and Arabic labels, a pack front | Free with `GEMINI_API_KEY`; about $0.30 with `ANTHROPIC_API_KEY` |
 
 **QA agent.** Open this folder in Claude Code and say "use the halal-lens-qa agent to test the app". It runs every free test, investigates failures, explores the manual scenarios (odd inputs, evidence links, a rulings review, phone width, dark mode), asks before any paid test, and writes `test-results/QA-REPORT.md`.
 
-**On GitHub.** Every push runs the free tests (Actions tab, report kept for 14 days). To run the live AI tests there, add `ANTHROPIC_API_KEY` under Settings → Secrets and variables → Actions, then Actions → Tests → Run workflow → tick "live AI".
+**On GitHub.** Every push runs the free tests (Actions tab, report kept for 14 days). To run the live AI tests there, add `GEMINI_API_KEY` (free) or `ANTHROPIC_API_KEY` under Settings → Secrets and variables → Actions, then Actions → Tests → Run workflow → tick "live AI".
 
 ## Adding an ingredient
 

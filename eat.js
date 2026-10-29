@@ -79,14 +79,14 @@
   $('eatForm').addEventListener('submit', function (e) { e.preventDefault(); run(); });
 
   function aiCard(name, city, box) {
-    var c = el('div', { class: 'card ai' }, [el('h2', { text: 'What Claude knows' }), el('p', { class: 'status', text: HL.CAP.mode === 'claude' ? 'Thinking… (the first time, Claude asks your permission)' : 'Thinking…' })]);
+    var c = el('div', { class: 'card ai' }, [el('h2', { text: 'What ' + HL.aiName() + ' knows' }), el('p', { class: 'status', text: HL.CAP.mode === 'claude' ? 'Thinking… (the first time, Claude asks your permission)' : 'Thinking…' })]);
     box.appendChild(c);
     HL.ai('restaurant', { name: name, city: city }).then(function (j) {
       c.textContent = '';
       var st = STATUS[j && j.status] || STATUS.unknown;
-      c.appendChild(el('div', { class: 'row' }, [el('h2', { text: 'What Claude knows' }), el('span', { style: 'flex:0 0 auto' }, [el('span', { class: 'pill p-' + st[0], text: st[1] })])]));
+      c.appendChild(el('div', { class: 'row' }, [el('h2', { text: 'What ' + HL.aiName() + ' knows' }), el('span', { style: 'flex:0 0 auto' }, [el('span', { class: 'pill p-' + st[0], text: st[1] })])]));
       if (!j || !j.known) {
-        c.appendChild(el('p', { text: 'Claude has no reliable information about this restaurant. Use the links below to find their listing and contact them.' }));
+        c.appendChild(el('p', { text: HL.aiName() + ' has no reliable information about this restaurant. Use the links below to find their listing and contact them.' }));
         return;
       }
       c.appendChild(el('p', { text: String(j.summary || '') }));
@@ -96,7 +96,7 @@
       if (site && /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(site)) { dl.appendChild(el('dt', { text: 'Website' })); dl.appendChild(el('dd', null, [el('a', { href: 'https://' + site, target: '_blank', rel: 'noopener', text: site })])); }
       if (j.howToVerify) { dl.appendChild(el('dt', { text: 'Verify with' })); dl.appendChild(el('dd', { text: String(j.howToVerify) })); }
       c.appendChild(dl);
-      c.appendChild(el('p', { class: 'hint', text: 'From Claude’s general knowledge, not a live search. Branches and certificates change.' }));
+      c.appendChild(el('p', { class: 'hint', text: 'From ' + HL.aiName() + '’s general knowledge, not a live search. Branches and certificates change.' }));
     }, function (e) {
       c.lastChild.textContent = HL.aiError(e);
     });

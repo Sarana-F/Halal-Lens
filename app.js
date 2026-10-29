@@ -77,7 +77,7 @@
   $('checkForm').addEventListener('submit', function (e) { e.preventDefault(); runCheck(); });
   $('q').addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !isList($('q').value)) { e.preventDefault(); runCheck(); } });
 
-  // ---------- product lookup: Open Food Facts first, then Claude ----------
+  // ---------- product lookup: Open Food Facts first, then the AI ----------
   function productLookup(q, local, out) {
     var box = el('div', { class: 'panel' });
     out.appendChild(box);
@@ -197,7 +197,7 @@
     box.textContent = '';
     if (!txt) return;
     lastRun = scanCheck;
-    if (!cur.fromLabel) box.appendChild(el('p', { class: 'note', text: 'No ingredient list was visible, so these are the usual ingredients of ' + (cur.type || 'this product') + ' from Claude’s knowledge. Photograph the ingredient list to be sure.' }));
+    if (!cur.fromLabel) box.appendChild(el('p', { class: 'note', text: 'No ingredient list was visible, so these are the usual ingredients of ' + (cur.type || 'this product') + ' from ' + HL.aiName() + '’s knowledge. Photograph the ingredient list to be sure.' }));
     if (cur.notes) box.appendChild(el('p', { class: 'note', text: cur.notes }));
     box.appendChild(HL.report(HL.analyze(txt + (cur.extra ? '; ' + cur.extra : ''), HL.opts()), { title: cur.title, source: cur.source }));
   }
@@ -210,9 +210,9 @@
   });
   HL.updateScanEngine = function () {
     var ai = CAP.mode && CAP.images;
-    $('scanEngine').textContent = ai ? 'Works like Google Lens: photograph a pack, an ingredient list, a dish or a menu in any language. Claude recognises it, then Halal Lens checks every ingredient.'
+    $('scanEngine').textContent = ai ? 'Works like Google Lens: photograph a pack, an ingredient list, a dish or a menu in any language. ' + HL.aiName() + ' recognises it, then Halal Lens checks every ingredient.'
       : CAP.mode === undefined ? 'Getting ready…'
-      : 'The label is read on your device. Pick the label’s language below; you can correct the text before checking.';
+      : 'Free mode: photograph the barcode to find the product in the free Open Food Facts database, or photograph the ingredient list to read it on your device. Pick the label’s language below.';
     $('ocrLangWrap').hidden = !!ai || CAP.mode === undefined;
   };
   HL.updateScanEngine();

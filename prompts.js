@@ -1,4 +1,4 @@
-/* Halal Lens — the instructions sent to Claude. Shared by the browser (HL.PROMPTS) and the Vercel API (require). */
+/* Halal Lens — the instructions sent to the AI (Claude or Gemini). Shared by the browser (HL.PROMPTS) and the Vercel API (require). */
 (function (root, factory) {
   var P = factory();
   if (typeof module === 'object' && module.exports) module.exports = P;

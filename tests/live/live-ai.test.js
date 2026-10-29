@@ -1,16 +1,18 @@
-// Live AI tests (TEST-PLAN.md section 5). These make REAL Claude calls through api/ask.js
-// and are billed to the API key: about $0.30 per run. They never run unless ANTHROPIC_API_KEY is set.
-// Run: ANTHROPIC_API_KEY=sk-ant-... npm run test:live
+// Live AI tests (TEST-PLAN.md section 5). These make REAL AI calls through api/ask.js.
+// With ANTHROPIC_API_KEY they are billed (about $0.30 per run); with only GEMINI_API_KEY they use Google's free tier.
+// They never run unless one of those keys is set.
+// Run: GEMINI_API_KEY=... npm run test:live   (or ANTHROPIC_API_KEY=...)
 global.window = global;
 const path = require('path');
 const root = path.join(__dirname, '..', '..');
 for (const f of ['evidence.js', 'ing-core.js', 'ing-additives.js', 'ing-plant-cosmetic.js', 'engine.js']) require(path.join(root, f));
 
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.log('SKIP live AI tests: set ANTHROPIC_API_KEY to run them (they are billed, about $0.30 per run).');
+if (!process.env.ANTHROPIC_API_KEY && !process.env.GEMINI_API_KEY) {
+  console.log('SKIP live AI tests: set GEMINI_API_KEY (free) or ANTHROPIC_API_KEY (billed, about $0.30 per run) to run them.');
   process.exit(0);
 }
 const handler = require(path.join(root, 'api', 'ask.js'));
+console.log('Live AI tests using ' + handler._test.provider());
 
 function call(body) {
   return new Promise((resolve) => {
