@@ -125,9 +125,21 @@ Coverage today: about 110 groups and 1,800 names, including E and INS numbers an
 
 ## 10. Testing
 
-**API tests** (`node tests/api.test.js`, 11 checks, no real Claude calls) cover AI on/off reporting, refusing other websites, unknown tasks and non-image uploads, input trimming and tolerant JSON parsing.
+**Version 1.2 added a full testing agent.** `TEST-PLAN.md` catalogues about 230 scenarios with IDs, and every automated test carries its ID:
 
-**Engine tests** (`node tests/engine.test.js`, 29 cases, all passing; `npm test` runs both) cover gummies with gelatin and E120, chocolate with vanilla extract, Indian biscuits with INS numbers, Nutella, prawns and crab under different schools, perfume alcohol under Hanafi and Shafi'i views, fatty alcohols, carmine lipstick, alcohol-free beer, negations, halal-certified products, pork vs fish gelatin, wine vinegar and mirin. The test also checks that every evidence id exists.
+- **Engine** (`tests/engine.test.js`): 195 checks across pork, alcohol, meat, seafood, gelatin, insects, dairy, additives, negations and claims, cosmetics, other languages and edge cases, each school where it matters, plus a speed check.
+- **Data integrity** (`tests/data.test.js`): 12 checks over all 108 ingredient groups, 1,787 names and 81 evidence items.
+- **Server API** (`tests/api.test.js`): 23 checks with Claude faked, including every error path, the request sent to Claude, and the per-visitor limit.
+- **Browser** (`tests/e2e/`, Playwright): 58 scenarios, each run on a phone, a tablet and a desktop size, with Claude, Open Food Facts and OCR faked; includes offline use, dark mode, keyboard use and an automated accessibility scan (axe).
+- **Live AI** (`tests/live/live-ai.test.js`): 6 real Claude calls, run only by hand.
+- **QA agent** (`.claude/agents/halal-lens-qa.md`): runs everything, investigates failures, explores the manual scenarios and writes a report.
+- **GitHub Actions** (`.github/workflows/tests.yml`): free tests on every push; live AI on request.
+
+The first full run found real bugs, all now fixed: a "not halal" label was read as halal; two rules disagreed on "chicken flavour"; "vanilla extract (alcohol free)" still carried a caution; a `#learn` link did nothing on an open page; a long unknown word made the page scroll sideways on 320 px phones; the "Example" tag had too little contrast; a label was attached to an element that cannot carry one; and an out-of-credit API key showed a confusing image error instead of falling back to on-device reading.
+
+The earlier version-1.0 checks are summarised below.
+
+**Engine tests** (first version: 26 cases) cover gummies with gelatin and E120, chocolate with vanilla extract, Indian biscuits with INS numbers, Nutella, prawns and crab under different schools, perfume alcohol under Hanafi and Shafi'i views, fatty alcohols, carmine lipstick, alcohol-free beer, negations, halal-certified products, pork vs fish gelatin, wine vinegar and mirin. The test also checks that every evidence id exists.
 
 **Browser tests** on the hosted build: tab switching, example chips, ingredient check with a chosen school, barcode lookup (Nutella 3017624010701 returned its real ingredient list), restaurant hints and links, library search, and no sideways scrolling at phone width.
 

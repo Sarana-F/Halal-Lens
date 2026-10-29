@@ -20,8 +20,9 @@
     window.scrollTo(0, 0);
   }
   TABS.forEach(function (t) { $('t-' + t).addEventListener('click', function () { show(t); }); });
-  var h = (location.hash || '').slice(1);
-  if (TABS.indexOf(h) >= 0) show(h);
+  function fromHash() { var h = (location.hash || '').slice(1); if (TABS.indexOf(h) >= 0) show(h); }
+  fromHash();
+  window.addEventListener('hashchange', fromHash);
 
   // ---------- settings controls ----------
   document.querySelectorAll('[data-ctx]').forEach(function (b) {
@@ -243,7 +244,7 @@
   // ---------- capabilities (Claude artifact) ----------
   HL.aiReady.then(HL.updateScanEngine);
   if (!HL.inArtifact) {
-    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
       try { navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {}
     }
   }

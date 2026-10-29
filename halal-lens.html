@@ -10,7 +10,7 @@
 /* Layout: one phone-width column; sticky brand bar with four tabs; verdict card framed by an eight-point star. */
 :root {
   --paper: #f2f4f7; --card: #ffffff; --ink: #121a2b; --muted: #5a6378; --line: #dde2ea;
-  --lapis: #1d3f94; --lapis-soft: #e6ecfa; --gold: #a8842f;
+  --lapis: #1d3f94; --lapis-soft: #e6ecfa; --gold: #a8842f; --gold-soft: #f6eedb; --gold-text: #5f4712;
   --ok: #12703f; --ok-bg: #e2f3e9; --note: #2f6b4f; --note-bg: #edf6ef;
   --bad: #b3261e; --bad-bg: #fde8e5; --warn: #94570a; --warn-bg: #fff0d4;
   --diff: #6438a0; --diff-bg: #efe8fa; --unk: #5a6378; --unk-bg: #eceff4;
@@ -20,13 +20,13 @@
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --paper: #0e1320; --card: #161d2e; --ink: #e8ecf5; --muted: #9aa4ba; --line: #2a3349;
-  --lapis: #93acff; --lapis-soft: #1d2a4d; --gold: #d4b25f;
+  --lapis: #93acff; --lapis-soft: #1d2a4d; --gold: #d4b25f; --gold-soft: #33290f; --gold-text: #ecd28c;
   --ok: #6fd69c; --ok-bg: #12301f; --note: #9fd8b5; --note-bg: #16291f;
   --bad: #ff8f86; --bad-bg: #3a1714; --warn: #f3bd62; --warn-bg: #352610;
   --diff: #c4a5f5; --diff-bg: #2a1d42; --unk: #a7b0c4; --unk-bg: #222a3c; color-scheme: dark; } }
 :root[data-theme="dark"] {
   --paper: #0e1320; --card: #161d2e; --ink: #e8ecf5; --muted: #9aa4ba; --line: #2a3349;
-  --lapis: #93acff; --lapis-soft: #1d2a4d; --gold: #d4b25f;
+  --lapis: #93acff; --lapis-soft: #1d2a4d; --gold: #d4b25f; --gold-soft: #33290f; --gold-text: #ecd28c;
   --ok: #6fd69c; --ok-bg: #12301f; --note: #9fd8b5; --note-bg: #16291f;
   --bad: #ff8f86; --bad-bg: #3a1714; --warn: #f3bd62; --warn-bg: #352610;
   --diff: #c4a5f5; --diff-bg: #2a1d42; --unk: #a7b0c4; --unk-bg: #222a3c; color-scheme: dark; }
@@ -50,9 +50,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .tab { border: 0; background: transparent; padding: 8px 4px; border-radius: 10px; font-weight: 600; font-size: .9rem; color: var(--muted); cursor: pointer; }
 .tab[aria-selected="true"] { background: var(--lapis-soft); color: var(--lapis); }
 
-main { padding-block: 16px 40px; display: grid; gap: 16px; }
-.panel { display: grid; gap: 16px; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+main { padding-block: 16px 40px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
 .card h2 { font-size: 1.15rem; }
 .lede { color: var(--muted); margin: 0; font-size: .95rem; }
 label.lbl { font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
@@ -69,7 +69,7 @@ textarea { min-height: 96px; resize: vertical; }
 .btn.small { padding: 8px 12px; font-size: .88rem; border-radius: 10px; }
 .btn:disabled { opacity: .55; cursor: progress; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 12px; font-size: .85rem; cursor: pointer; color: var(--ink); text-align: left; }
+.chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 12px; font-size: .85rem; cursor: pointer; color: var(--ink); text-align: left; max-width: 100%; overflow-wrap: anywhere; }
 .chip.static { cursor: default; }
 .chip[aria-pressed="true"] { background: var(--lapis-soft); color: var(--lapis); border-color: var(--lapis); }
 .row > .pill, .row > .btn.small { flex: 0 0 auto; }
@@ -88,7 +88,7 @@ p.row > span:last-child { flex: 1 1 200px; }
 @media (max-width: 480px) { .verdict { grid-template-columns: 48px 1fr; align-items: start; gap: 12px; } .verdict svg { width: 48px; height: 48px; } .verdict h2 { font-size: 1.35rem; } }
 .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .tag { font-size: .75rem; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: var(--card); color: var(--muted); border: 1px solid var(--line); }
-.example-tag { background: var(--gold); color: var(--card); border-color: transparent; }
+.example-tag { background: var(--gold-soft); color: var(--gold-text); border-color: var(--gold); }
 
 .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
 .p-x { background: var(--bad-bg); color: var(--bad); } .p-d { background: var(--warn-bg); color: var(--warn); }
@@ -164,8 +164,8 @@ details.ing > summary::-webkit-details-marker { display: none; }
         </div>
       </div>
       <button class="btn" id="checkBtn" type="submit">Check halal status</button>
-      <div class="chips" id="examples" aria-label="Examples"></div>
-      <div class="chips" id="recent" aria-label="Recent searches"></div>
+      <div class="chips" id="examples" role="group" aria-label="Examples"></div>
+      <div class="chips" id="recent" role="group" aria-label="Recent searches"></div>
     </form>
     <div id="checkOut" class="panel" aria-live="polite"></div>
   </section>
@@ -219,7 +219,7 @@ details.ing > summary::-webkit-details-marker { display: none; }
     <div class="card">
       <h2>Ingredient library</h2>
       <input type="search" id="libQ" placeholder="Search: gelatin, E471, carmine, shrimp, alcohol…" aria-label="Search the ingredient library">
-      <div class="chips" id="libFilter"></div>
+      <div class="chips" id="libFilter" role="group" aria-label="Filter by ruling"></div>
       <div class="list-gap" id="libList"></div>
     </div>
   </section>

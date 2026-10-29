@@ -64,8 +64,26 @@ There is also a claude.ai version for signed-in Claude users, where Claude reads
 | `prompts.js` | The instructions sent to Claude (shared by the browser and the server) |
 | `api/ask.js` | Vercel function that calls Claude with the server's API key |
 | `manifest.webmanifest`, `sw.js`, `icon.svg` | Make the site installable and usable offline |
-| `tests/` | Engine and API tests: `npm test` |
+| `tests/`, `playwright.config.js` | Engine, data, API, browser and live AI tests |
+| `TEST-PLAN.md` | Every test scenario with its ID |
+| `.claude/agents/halal-lens-qa.md` | The QA agent for Claude Code |
+| `.github/workflows/tests.yml` | Runs the tests on GitHub |
 | `DEVELOPMENT.md` | How the app was designed, built and tested |
+
+## Testing
+
+`TEST-PLAN.md` lists about 230 scenarios with IDs. Automated tests use the same IDs.
+
+| Command | What it runs | Cost |
+|---|---|---|
+| `npm test` | Engine rulings (195 checks), data integrity, server API with Claude faked | Free |
+| `npm run test:e2e` | Browser tests on phone, tablet and desktop sizes (first time: `npx playwright install chromium`) | Free |
+| `npm run test:all` | Both of the above | Free |
+| `npm run test:live` | Real Claude calls: product, restaurant, Spanish and Arabic labels, a pack front | About $0.30, needs `ANTHROPIC_API_KEY` |
+
+**QA agent.** Open this folder in Claude Code and say "use the halal-lens-qa agent to test the app". It runs every free test, investigates failures, explores the manual scenarios (odd inputs, evidence links, a rulings review, phone width, dark mode), asks before any paid test, and writes `test-results/QA-REPORT.md`.
+
+**On GitHub.** Every push runs the free tests (Actions tab, report kept for 14 days). To run the live AI tests there, add `ANTHROPIC_API_KEY` under Settings → Secrets and variables → Actions, then Actions → Tests → Run workflow → tick "live AI".
 
 ## Adding an ingredient
 

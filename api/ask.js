@@ -107,6 +107,7 @@ async function handler(req, res) {
     return send(res, 200, { result });
   } catch (err) {
     if (err instanceof Anthropic.AuthenticationError) return send(res, 500, { error: 'The server\'s API key was rejected.', code: 'server_off' });
+    if (err instanceof Anthropic.APIError && err.status === 402) return send(res, 402, { error: 'The site\'s AI credit has run out.', code: 'no_credit' });
     if (err instanceof Anthropic.RateLimitError) return send(res, 429, { error: 'The AI service is busy. Try again shortly.', code: 'rate_limited' });
     if (err instanceof Anthropic.BadRequestError) return send(res, 400, { error: err.message, code: r.image ? 'image_rejected' : 'bad_request' });
     if (err instanceof Anthropic.APIError) return send(res, 502, { error: 'Claude API error ' + err.status + '.', code: 'upstream_error' });
@@ -115,4 +116,4 @@ async function handler(req, res) {
 }
 
 module.exports = handler;
-module.exports._test = { parseJSON, readRequest };
+module.exports._test = { parseJSON, readRequest, setClient: (c) => { client = c; }, resetLimits: () => hits.clear() };

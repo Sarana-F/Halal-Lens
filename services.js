@@ -85,6 +85,7 @@ window.HL = window.HL || {};
       images_unavailable: 'Photos cannot be sent to Claude in this view.',
       too_large: 'The photo is too large. Try again; the app shrinks it automatically.',
       server_off: 'AI reading is not switched on for this website yet.',
+      no_credit: 'AI reading is paused because this website’s AI credit has run out.',
       empty_completion: 'Claude returned nothing. Try again.',
       cancelled: 'Stopped.'
     })[e && e.code] || 'The AI service could not be reached. Check your connection and try again.';
@@ -192,7 +193,11 @@ window.HL = window.HL || {};
       if (!j || j.readable === false || !products.length) throw new Error((j && j.summary ? j.summary + ' ' : '') + 'Nothing to check could be recognised. Try a closer photo of the pack or its ingredient list.');
       j.products = products;
       return { mode: 'vision', data: j };
-    }, function (e) { throw new Error(e && e.code ? HL.aiError(e) : (e && e.message) || HL.aiError(e)); });
+    }, function (e) {
+      var err = new Error(e && e.code ? HL.aiError(e) : (e && e.message) || HL.aiError(e));
+      err.code = e && e.code;
+      throw err;
+    });
   }
   /* Returns {mode:'vision', data} | {mode:'ocr', text, note} | {product, note}. */
   HL.readLabel = function (file, onStatus, lang) {
@@ -202,7 +207,14 @@ window.HL = window.HL || {};
       return HL.offBarcode(code, HL.S.ctx).then(function (p) { return p ? { product: p, note: 'Barcode ' + code + ' found in Open Food Facts.' } : null; }, function () { return null; });
     }).then(function (res) {
       if (res) return res;
-      return HL.aiReady.then(function (mode) { return mode && HL.CAP.images ? visionRead(file, onStatus) : ocrRead(file, onStatus, lang); });
+      return HL.aiReady.then(function (mode) {
+        if (!(mode && HL.CAP.images)) return ocrRead(file, onStatus, lang);
+        // If the site's AI is switched off or out of credit, read the label on the device instead.
+        return visionRead(file, onStatus).catch(function (e) {
+          if (mode === 'server' && e && (e.code === 'server_off' || e.code === 'no_credit')) return ocrRead(file, onStatus, lang);
+          throw e;
+        });
+      });
     });
   };
 

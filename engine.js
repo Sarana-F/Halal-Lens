@@ -19,7 +19,8 @@ window.HL = window.HL || {};
   var NEG_BEFORE = new RegExp('\\b(?:no|without|free from|free of|sin|sans|ohne|contains no|does not contain|not contain|nor)\\s+(?:added\\s+)?(?:any\\s+)?(?:' + NEG + ')\\b', 'g');
   var NEG_AFTER = new RegExp('\\b(?:' + NEG + ')\\s*free\\b', 'g');
   var CERT = /\b(halal|halaal|zabiha|zabihah|dhabiha|jakim|muis|ifanca|sanha|esma|hfce|halal india|jamiat ulama|halal certified|certified halal|halal certification|halal trust|mui halal)\b|حلال/;
-  var NOT_HALAL = /\b(non|not)\s+halal\b/;
+  var NOT_HALAL = /\bnon\s*halal\b|\bnot\s+halal\b(?!\s+certified)/;
+  var NOT_CERT = /\b(?:not|no)\s+(?:halal\s+)?certifi(?:ed|cation)\b|\bnot\s+halal\s+certified\b/g;
   var FILLER = /^(ingredients?|ingredientes|ingredients list|contains|may contain|allergy advice|allergens?|for allergens|see ingredients in bold|and|or|with|of|traces?|natural|organic|emulsifiers?|stabili[sz]ers?|thickeners?|colou?rs?|preservatives?|antioxidants?|acidity regulators?|raising agents?|sweeteners?|humectants?|thickening agents?|flavour enhancers?|flavor enhancers?|\d+([.,]\d+)?\s*%?)$/;
 
   function light(s) {
@@ -108,6 +109,9 @@ window.HL = window.HL || {};
       }
     }
     if (!note && entry.v && PLANT.test(win)) { s = 'h'; note = 'Marked as plant or vegetable origin.'; m = null; }
+    if (!note && claims.alcoholFree && entry.g === 'alcohol' && (s === 'n' || s === 'd') && entry.a.indexOf('naw_drink') < 0) {
+      s = 'h'; note = 'The product is labelled alcohol-free.'; m = null;
+    }
     if (s !== 'h' && s !== 'x') {
       var animalDoubt = entry.v || /^(meat|animal)$/.test(entry.g) || /rennet|enzyme|cheese|collagen|gelatin/i.test(entry.n);
       if (claims.vegan && animalDoubt) { s = 'h'; note = 'The product is labelled vegan, so this is not from an animal.'; m = null; }
@@ -123,9 +127,14 @@ window.HL = window.HL || {};
     if (!INDEX) buildIndex();
     var ctx = opts.ctx || 'food', school = opts.school || '';
     var t = norm(text);
+    // "not halal certified" is no claim either way; "non-halal" / "not halal" is the maker saying it is not halal.
+    var claimText = t.replace(NOT_CERT, ' ');
+    var notHalal = NOT_HALAL.test(claimText);
+    t = t.replace(NOT_CERT, function (m) { return ' '.repeat(m.length); });
+    t = t.replace(/\bnon\s*halal\b|\bnot\s+halal\b/g, function (m) { return ' '.repeat(m.length); });
     var claims = {
-      halal: CERT.test(t) && !NOT_HALAL.test(t),
-      notHalal: NOT_HALAL.test(t),
+      halal: CERT.test(t) && !notHalal,
+      notHalal: notHalal,
       vegan: /\b(vegan|suitable for vegans|100 ?% plant|plant based)\b/.test(t),
       vegetarian: /\b(vegetarian|suitable for vegetarians|vegetariano|vegetarien)\b/.test(t),
       alcoholFree: /\b(alcohol free|non alcoholic|sin alcohol|sans alcool|alkoholfrei|no alcohol)\b/.test(t),
@@ -170,6 +179,7 @@ window.HL = window.HL || {};
     var verdict = hits.length ? worst : 'u';
     if (claims.halal && /^[hnmd]$/.test(verdict)) verdict = 'hc';
     if (!hits.length && claims.halal) verdict = 'hc';
+    if (claims.notHalal) verdict = 'x';
 
     return {
       verdict: verdict, hits: hits, unknown: unknown, claims: claims, ctx: ctx, school: school,
@@ -184,6 +194,7 @@ window.HL = window.HL || {};
       return list.slice(0, 3).map(function (h) { return h.entry.n.replace(/\s*\(.*\)$/, ''); }).join(', ') + (list.length > 3 ? ' and ' + (list.length - 3) + ' more' : '');
     };
     var of = function (s) { return r.hits.filter(function (h) { return h.s === s; }); };
+    if (r.claims.notHalal) return 'The label itself says this product is not halal. Avoid it.';
     switch (r.verdict) {
       case 'x': return 'Contains ' + names(of('x')) + '. Avoid this product.';
       case 'd': return names(of('d')) + ' may come from a haram source and the label does not say which. Avoid it unless the source is confirmed or the product is halal-certified.';
